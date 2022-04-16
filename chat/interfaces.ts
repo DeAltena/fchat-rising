@@ -4,6 +4,7 @@ import {Connection} from '../fchat';
 import {Channel, Character} from '../fchat/interfaces';
 import { AdManager } from './ads/ad-manager';
 import { SmartFilterSettings } from '../learn/filter/types';
+import {Format} from './autoformat/autoformat';
 export {Connection, Channel, Character} from '../fchat/interfaces';
 export const userStatuses: ReadonlyArray<Character.Status> = ['online', 'looking', 'away', 'busy', 'dnd'];
 export const channelModes: ReadonlyArray<Channel.Mode> = ['chat', 'ads', 'both'];
@@ -227,6 +228,9 @@ export namespace Settings {
         readonly risingColorblindMode: boolean;
 
         readonly risingFilter: SmartFilterSettings;
+
+        readonly autoFormats: Format[];
+        readonly applyAutoFormats: boolean;
     }
 }
 

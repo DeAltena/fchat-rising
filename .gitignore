@@ -15,3 +15,6 @@ node_modules/
 
 test.ts
 
+package.json
+yarn.lock
+package-lock.json

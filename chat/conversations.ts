@@ -13,6 +13,7 @@ import throat from 'throat';
 import Bluebird from 'bluebird';
 import log from 'electron-log';
 import isChannel = Interfaces.isChannel;
+import {AutoFormatter} from './autoformat/autoformat';
 
 function createMessage(this: any, type: MessageType, sender: Character, text: string, time?: Date): Message {
     if(type === MessageType.Message && isAction(text)) {
@@ -265,7 +266,9 @@ class PrivateConversation extends Conversation implements Interfaces.PrivateConv
             return;
         }
 
-        const messageText = this.enteredText;
+        let messageText = this.enteredText;
+
+        messageText = AutoFormatter.getInstance().applyFormats(messageText);
 
         this.clearText();
 
@@ -415,7 +418,9 @@ class ChannelConversation extends Conversation implements Interfaces.ChannelConv
             return;
         }
 
-        const message = this.enteredText;
+        let message = this.enteredText;
+
+        message = AutoFormatter.getInstance().applyFormats(message);
 
         if (!isAd) {
             this.clearText();

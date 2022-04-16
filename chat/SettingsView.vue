@@ -199,6 +199,49 @@
                 </label>
             </div>
 
+            <h5>Auto-Format Chat Messages</h5>
+
+          <div class="italic">Hint: when working with replace, the " tags should be at the very top.</div>
+          <label><input type="checkbox" id="autoFormatApply" class="control-label" v-model="applyFormats"> Enable Auto-Formatting upon sending messages</label>
+          <div class = "wrapper">
+            <div class = "formats-holder">
+              <div class = "formats-scroller">
+                <div class="format-button draggable" v-for="format in formats" :class="currentFormat.id === format.id ? 'selected' : ''" @click="selectFormat(format.id)">
+                 {{format.name}}
+                </div>
+              </div>
+              <input class="btn format-add-rm-btn" type="button" value="Add" @click="addFormat"/><input class="btn format-add-rm-btn" type="button" value="Remove" @click="deleteFormat" />
+            </div>
+            <div class = "format-details" v-if="currentFormat.id !== '-1'">
+              <label class="control-label">Format Name: <input type="text" id="fname" class="form-control" size="28" v-model="currentFormat.name"/></label><br>
+              <label class="control-label">Start Tag: <input type="text" id="starttag" class="form-control" size="8" v-model="currentFormat.startTag"/></label>
+              <label class="control-label right-label">End Tag: <input type="text" id="endtag" class="form-control" size="8" v-model="currentFormat.endTag"/></label><br>
+              <label class="control-label">Replace With: <input type="text" id="startreplace" class="form-control" size="8" v-model="currentFormat.startReplace"/></label>
+              <label class="control-label right-label">Replace With: <input type="text" id="endreplace" class="form-control" size="8" v-model="currentFormat.endReplace"/></label><br>
+              <label class="control-label"><input type="checkbox" id="exclude" class="control-label" v-model="currentFormat.excludeTags"> Exclude Tags from Format</label><br>
+              <label class="control-label">Colour: <select v-model="currentFormat.colour">
+                <option value="">None</option>
+                <option value="red">Red</option>
+                <option value="orange">Orange</option>
+                <option value="yellow">Yellow</option>
+                <option value="green">Green</option>
+                <option value="cyan">Cyan</option>
+                <option value="blue">Blue</option>
+                <option value="purple">Purple</option>
+                <option value="pink">Pink</option>
+                <option value="black">Black</option>
+                <option value="brown">Brown</option>
+                <option value="white">White</option>
+                <option value="gray">Gray</option>
+              </select></label><br>
+              <label class="control-label"><input type="checkbox" id="bold" class="control-label" v-model="currentFormat.bold"> Bold</label>
+              <label class="control-label right-label"><input type="checkbox" id="italic" class="control-label" v-model="currentFormat.italic"> Italic</label>
+              <label class="control-label right-label"><input type="checkbox" id="under" class="control-label" v-model="currentFormat.underscore"> Underlined</label><br>
+            </div>
+            <div class = "format-details" v-else>
+              <label class="control-label">Select 'Add' to create your first auto-format rule!</label>
+            </div>
+          </div>
         </div>
 
         <div v-show="selectedTab === '3'">
@@ -325,6 +368,7 @@
     import { smartFilterTypes as smartFilterTypesOrigin } from '../learn/filter/types';
     import _ from 'lodash';
     import { matchesSmartFilters } from '../learn/filter/smart-filter';
+    import {AutoFormatter, Format} from './autoformat/autoformat';
 
     @Component({
         components: {modal: Modal, tabs: Tabs}
@@ -371,6 +415,10 @@
 
         smartFilterTypes = smartFilterTypesOrigin;
 
+        formats: Format[] = [];
+        currentFormat: Format = new Format();
+        applyFormats!: boolean;
+
         async load(): Promise<void> {
             const settings = core.state.settings;
             this.playSound = settings.playSound;
@@ -409,6 +457,17 @@
 
             this.risingColorblindMode = settings.risingColorblindMode;
             this.risingFilter = settings.risingFilter;
+
+            this.formats = settings.autoFormats;
+
+            if(this.formats.length > 0){
+              this.currentFormat = this.formats[0];
+            } else {
+              //Making current_format nullable breaks everything. So we do this instead.
+              this.currentFormat = new Format();
+              this.currentFormat.id = '-1';
+            }
+            this.applyFormats = settings.applyAutoFormats;
         }
 
         async doImport(): Promise<void> {
@@ -474,8 +533,14 @@
                   ...this.risingFilter,
                   minAge: (minAge !== null && maxAge !== null) ? Math.min(minAge, maxAge) : minAge,
                   maxAge: (minAge !== null && maxAge !== null) ? Math.max(minAge, maxAge) : maxAge
-                }
+                },
+
+                autoFormats: this.formats,
+                applyAutoFormats: this.applyFormats
             };
+
+            AutoFormatter.getInstance().formats = this.formats;
+            AutoFormatter.getInstance().apply = this.applyFormats;
 
             console.log('SETTINGS', minAge, maxAge, core.state.settings);
 
@@ -527,6 +592,34 @@
         setSmartFilter(key: keyof SmartFilterSelection , value: any): void {
           this.risingFilter.smartFilters[key] = value.target.checked;
         }
+
+        selectFormat(id: string): void {
+          this.formats.forEach(
+              (format) => {
+                if(format.id === id)
+                  this.currentFormat = format;
+              }
+          )
+        }
+
+        deleteFormat(): void {
+            if(this.currentFormat.id === '-1')
+              return;
+
+            this.formats.splice(this.formats.indexOf(this.currentFormat), 1)
+            if(this.formats.length > 0){
+              this.currentFormat = this.formats[0];
+            } else {
+              //Making current_format nullable breaks everything. So we do this instead.
+              this.currentFormat = new Format();
+              this.currentFormat.id = '-1';
+            }
+        }
+
+        addFormat(): void {
+          this.currentFormat = new Format();
+          this.formats.push(this.currentFormat);
+        }
     }
 </script>
 
@@ -560,5 +653,41 @@
 
     #settings .form-group.filters.age  input {
       margin-left: 5px;
+    }
+
+    .italic{
+      font-style: italic;
+    }
+    .format-button{
+      width: 130px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      margin: 2px 10px;
+    }
+    .formats-holder {
+      vertical-align: top;
+      display: inline-block;
+      height: 310px;
+      width: 150px;
+    }
+    .formats-scroller {
+      overflow-y: auto;
+      height: 290px;
+      width: 150px;
+    }
+    .format-details {
+      vertical-align: top;
+      display: inline-block;
+      margin-left: 10px;
+    }
+    .format-add-rm-btn{
+      width: 75px;
+    }
+    .selected{
+      background-color: #2a2a54 !important;
+    }
+    .right-label{
+      margin-left: 22px;
     }
 </style>

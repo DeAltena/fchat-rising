@@ -94,6 +94,8 @@ export class Settings implements ISettings {
         },
         exceptionNames: []
     };
+    autoFormats = [];
+    applyAutoFormats = false;
 }
 
 

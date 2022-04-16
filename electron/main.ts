@@ -377,7 +377,7 @@ function onReady(): void {
                 click: (_m: electron.MenuItem, w: electron.BrowserWindow) => {
 
                     // log.info('MENU ZOOM+');
-                    zoomLevel = Math.min(zoomLevel + w.webContents.getZoomFactor()/2, 6);
+                    zoomLevel = Math.min(zoomLevel + w.webContents.getZoomFactor() / 2, 6);
                     // w.webContents.setZoomLevel(newZoom);
 
                     for(const win of electron.webContents.getAllWebContents()) win.send('update-zoom', zoomLevel);
@@ -390,7 +390,7 @@ function onReady(): void {
                 label: 'Zoom Out',
                 click: (_m: electron.MenuItem, w: electron.BrowserWindow) => {
                     // log.info('MENU ZOOM-');
-                    zoomLevel = Math.max(0, zoomLevel - w.webContents.getZoomFactor()/2);
+                    zoomLevel = Math.max(0, zoomLevel - w.webContents.getZoomFactor() / 2);
 
                     // w.webContents.setZoomLevel(newZoom);
 
@@ -539,8 +539,6 @@ function onReady(): void {
                     },
                     accelerator: 'CmdOrCtrl+p'
                 },
-
-
                 {type: 'separator'},
                 {role: 'minimize'},
                 {

@@ -132,6 +132,9 @@
                 </span>
             </template>
         </div>
+        <div v-if="!isChannel(conversation) && conversation.character.name === 'StatTrack'">
+          <a class="btn btn-sm btn-outline-primary" @click="initStats()">Test</a>
+        </div>
         <bbcode-editor v-model="conversation.enteredText" @keydown="onKeyDown" :extras="extraButtons" @input="keepScroll"
             :classes="'form-control chat-text-box' + (isChannel(conversation) && conversation.isSendingAds ? ' ads-text-box' : '')"
             :hasToolbar="settings.bbCodeBar" ref="textBox" style="position:relative;margin-top:5px"
@@ -251,7 +254,6 @@
         async onBeforeMount(): Promise<void> {
           this.showNonMatchingAds = !await core.settingsStore.get('hideNonMatchingAds');
         }
-
 
         @Hook('mounted')
         mounted(): void {
@@ -446,7 +448,6 @@
             await core.settingsStore.set('hideNonMatchingAds', !this.showNonMatchingAds);
         }
 
-
         /* tslint:disable */
         getMessageWrapperClasses(): any {
             const filter = core.state.settings.risingFilter;
@@ -508,29 +509,24 @@
             (<CharacterChannelList>this.$refs['channelList']).show();
         }
 
-
         isAutopostingAds(): boolean {
             return this.conversation.adManager.isActive();
         }
-
 
         skipAd(): void {
           this.conversation.adManager.skipAd();
           this.updateAutoPostingState();
         }
 
-
         stopAutoPostAds(): void {
             this.conversation.adManager.stop();
         }
-
 
         renewAutoPosting(): void {
             this.conversation.adManager.renew();
 
             this.refreshAutoPostingTimer();
         }
-
 
         toggleAutoPostAds(): void {
             if(this.isAutopostingAds())
@@ -540,7 +536,6 @@
 
             this.refreshAutoPostingTimer();
         }
-
 
         updateAutoPostingState() {
             const adManager = this.conversation.adManager;
@@ -585,10 +580,13 @@
             this.updateAutoPostingState();
         }
 
-
         hasSFC(message: Conversation.Message): message is Conversation.SFCMessage {
             // noinspection TypeScriptValidateTypes
             return (<Partial<Conversation.SFCMessage>>message).sfc !== undefined;
+        }
+
+        initStats(): void {
+          
         }
 
         get characterImage(): string {

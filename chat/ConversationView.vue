@@ -132,7 +132,7 @@
                 </span>
             </template>
         </div>
-        <div v-if="!isChannel(conversation) && conversation.character.name === 'StatTrack'">
+        <div v-if="isStatTrack(conversation)">
           <a class="btn btn-sm btn-outline-primary" @click="initStats()">Test</a>
         </div>
         <bbcode-editor v-model="conversation.enteredText" @keydown="onKeyDown" :extras="extraButtons" @input="keepScroll"
@@ -585,8 +585,15 @@
             return (<Partial<Conversation.SFCMessage>>message).sfc !== undefined;
         }
 
+        isStatTrack(conversation: Conversation): boolean {
+          if(!this.isPrivate(conversation))
+            return false;
+
+          return conversation.character.name === 'StatTrack';
+        }
+
         initStats(): void {
-          
+
         }
 
         get characterImage(): string {

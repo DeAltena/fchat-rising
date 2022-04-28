@@ -142,7 +142,7 @@
              @scroll="onMessagesScroll" style="flex:1;overflow:auto;margin-top:2px">
             <template v-for="message in messages">
                 <message-view :message="message" :channel="isChannel(conversation) ? conversation.channel : undefined"
-                              :key="message.id"
+                              :key="message.id" :parent="this"
                               :classes="message == conversation.lastRead ? 'last-read' : ''">
                 </message-view>
                 <span v-if="hasSFC(message) && message.sfc.action === 'report'" :key="'r' + message.id">
@@ -158,8 +158,20 @@
         </div>
         <div v-if="isStatTrack(conversation)">
             <hr>
-            <div id="statheader" v-html="briefStatDesc"></div>
-            <a class="btn btn-light btn-sm" @click="initStats()">Update Stats</a>
+            <div id="nostatheader" v-if="!statSheet">
+                No Stats known yet! Press 'Update Stats'!
+            </div>
+            <div id="statheader" v-else>
+                You are <strong> {{ statSheet.name }}</strong>, the <span :title="`Current Level Cap: ${statSheet.lvlcap}`">Level {{ statSheet.lvl }}</span>
+                &nbsp;<job :job="statSheet.job" :parent="this"></job>.
+
+            </div>
+            <a class="btn btn-light btn-sm btn-stattrack">Inflict (De)Buff on...</a>
+            <a class="btn btn-light btn-sm btn-stattrack">Drain from...</a>
+            <a class="btn btn-light btn-sm btn-stattrack">Siphon to...</a>
+            <a class="btn btn-light btn-sm btn-stattrack">Explore Dungeon</a>
+            <a class="btn btn-light btn-sm btn-stattrack" @click="viewStats()">View Current Stats</a>
+            <a class="btn btn-light btn-sm btn-stattrack" @click="sendCommand('!stats')">Update Stats</a>
         </div>
         <bbcode-editor v-model="conversation.enteredText" @keydown="onKeyDown" :extras="extraButtons"
                        @input="keepScroll"
@@ -214,6 +226,7 @@
                  :character="conversation.character"></ad-view>
         <channel-list ref="channelList" v-if="isPrivate(conversation)"
                       :character="conversation.character"></channel-list>
+        <stat-view ref="statView" :data="statViewData" v-if="isStatTrack(conversation)"></stat-view>
     </div>
 </template>
 
@@ -244,6 +257,9 @@ import * as _ from 'lodash';
 import Dropdown from '../components/Dropdown.vue';
 import log from 'electron-log';
 import {FunStat, Stats, StatSheet} from "./leveldrain/StatSheet";
+import {Buff, BuffRepository, Job, JobRepository} from "./leveldrain/LevelDrainData";
+import JobView from "./leveldrain/JobView.vue";
+import StatSheetView from './leveldrain/StatSheetView.vue'
 
 
 @Component({
@@ -259,7 +275,9 @@ import {FunStat, Stats, StatSheet} from "./leveldrain/StatSheet";
         'ad-view': CharacterAdView,
         'channel-list': CharacterChannelList,
         dropdown: Dropdown,
-        adSettings: ConversationAdSettings
+        adSettings: ConversationAdSettings,
+        job: JobView,
+        'stat-view': StatSheetView
     }
 })
 export default class ConversationView extends Vue {
@@ -296,6 +314,7 @@ export default class ConversationView extends Vue {
     isPrivate = Conversation.isPrivate;
     showNonMatchingAds = true;
     statSheet: StatSheet | null = null;
+    statViewData: StatSheet | Job | Buff | null = null;
 
 
     @Hook('beforeMount')
@@ -386,6 +405,10 @@ export default class ConversationView extends Vue {
 
     readonly STAT_IDENTIFIER = 'LEVEL DRAIN STAT SHEET';
 
+    //alljobs = '';
+    //jobs = ['alchemist', 'bard', 'bartender', 'blackguard', 'blacksmith', 'chef', 'citizen', 'cleric', 'cupid', 'dancer', 'druid', 'engineer', 'farmer', 'fencer', 'fighter', 'gunslinger', 'healer', 'imp', 'inquisitor', 'knight', 'merchant', 'mommy', 'monk', 'ninja', 'noble', 'nun', 'paladin', 'playboy', 'priest', 'professor', 'prostitute', 'ranger', 'samurai', 'scientist', 'soldier', 'spellsword', 'thief', 'tourist', 'warlock', 'warrior', 'witch', 'wizard', 'abyss knight', 'acolyte', 'air elemental', 'alien', 'alraune', 'ancient dragon', 'android', 'angel', 'arachne', 'archangel', 'archdemon', 'archwizard', 'artificer', 'artificial intelligence', 'ash sprite', 'assassin', 'athlete', 'automaton', 'bandit', 'beast tamer', 'bee', 'berserker', 'bimbo', 'bimboslime', 'bishop', 'blessed tail', 'blood knight', 'bloodbank', 'bloodkin', 'broodmother', 'bully', 'bunny', 'canine', 'casino bunny', 'centaur', 'cervine', 'champion', 'cheerleader', 'cheshire', 'chimera', 'citizen but better with sunglasses', 'citizen but better', 'clown', 'combat maid', 'cow', 'crab', 'cultist', 'cumdump', 'cursed armor', 'cursed sword', 'demon hunter', 'demon', 'desperado', 'devout', 'djinn', 'doll', 'dragon', 'drain slime', 'draincubus', 'dullahan', 'dungeon core', 'earth elemental', 'elder brain', 'elder vampire', 'elemental', 'eros', 'executioner', 'fae', 'false prophet', 'fan', 'feline', 'fire elemental', 'fisherman', 'foreign god', 'forest elemental', 'fox', 'frog', 'galactic tyrant', 'gambler', 'gargoyle', 'gazer', 'ghost', 'giant rat', 'goblin', 'golem', 'gorgon', 'harpy', 'healslut', 'hellhound', 'hero', 'himbo', 'hobgoblin', 'homunculus', 'horror', 'ice elemental', 'idol', 'incubator', 'incubus', 'jellyfish', 'kensai', 'kobold', 'kraken', 'lamia', 'leaf sprite', 'lich', 'little devil', 'lycanthrope', 'mad scientist', 'magical girl', 'maid', 'manticore', 'master chef', 'master chemist', 'master of pacts', 'master smith', 'matango', 'meatdildo', 'mecha', 'merfolk', 'miko', 'mimic', 'mindflayer', 'minion', 'minotaur', 'moth', 'mystic knight', 'necromancer', 'nurse', 'nymph', 'oni', 'outer horror', 'parasite', 'party member', 'phantom thief', 'pig', 'pirate', 'plague doctor', 'psychic', 'punching bag', 'puppeteer', 'queen bee', 'rancher', 'reverse bunny', 'rodent', 'royal knight', 'royal', 'sage', 'salaryman', 'sand sprite', 'satyr', 'scylla', 'shade', 'shark', 'sharpshooter', 'sheep', 'sidekick', 'siren', 'skeleton', 'slave', 'slime', 'slimebimbo', 'snow sprite', 'sphinx', 'spoony bard', 'spore zombie', 'sprite', 'squire', 'stalker', 'statue', 'student', 'succubus', 'superhero', 'superstar', 'swashbuckler', 'tamed beast', 'teacher', 'thrall', 'vampire', 'vigilante', 'villain', 'warpriest', 'warship', 'weapon master', 'wind sprite', 'zen master', 'zombie'];
+    job = '';
+    statMessage = '';
     @Watch('conversation.messages')
     messageAdded(newValue: Conversation.Message[]): void {
         this.keepScroll();
@@ -393,9 +416,25 @@ export default class ConversationView extends Vue {
             this.messageView.scrollTop -= (this.messageView.firstElementChild!).clientHeight;
         this.messageCount = newValue.length;
 
-        if (this.isStatTrack(this.conversation) && this.messages[newValue.length - 1].text.includes(this.STAT_IDENTIFIER)) {
-            this.updateStats(newValue[newValue.length - 1].text);
+        try{
+            let nextMessage = this.messages[newValue.length - 1];
+            /*if(this.isStatTrack(this.conversation) && nextMessage.type === Conversation.Message.Type.Message && (nextMessage as ChatMessage).sender?.name === 'StatTrack'){
+                this.jobReplacements(nextMessage);
+            }*/
+            if (this.isStatTrack(this.conversation) && nextMessage.text.includes(this.STAT_IDENTIFIER)) {
+                this.updateStats(nextMessage.text);
+            }
+            else if (this.job != '' && this.isStatTrack(this.conversation) && nextMessage.text.includes('Innate:')
+                && nextMessage.text.toLowerCase().includes(this.job.toLowerCase())){
+                JobRepository.getInstance().parseJobs(nextMessage.text);
+                this.updateStats(this.statMessage);
+                this.job = '';
+                this.statMessage = '';
+            }
+        } catch (err) {
+            log.error(this.messages[newValue.length - 1], '\n', err);
         }
+
     }
 
     keepScroll(): void {
@@ -617,7 +656,7 @@ export default class ConversationView extends Vue {
             this.adAutoPostUpdate = l('admgr.noAds');
             this.adsRequireSetup = true;
         }
-    };
+    }
 
     refreshAutoPostingTimer(): void {
         if (this.autoPostingUpdater)
@@ -639,153 +678,183 @@ export default class ConversationView extends Vue {
     }
 
     isStatTrack(conversation: Conversation): boolean {
-        if (!this.isPrivate(conversation))
+        try{
+            return (this.isPrivate(conversation) && conversation.character.name === 'StatTrack') ||
+                (this.isChannel(conversation) && conversation.name === 'Level Drain');
+        } catch (err) {
+            log.error(err);
             return false;
-
-        return conversation.character.name === 'StatTrack';
+        }
     }
 
-    async initStats(): Promise<void> {
+    async sendCommand(cmd: string): Promise<void> {
         let previouslyEntered = this.conversation.enteredText;
-        this.conversation.enteredText = '!stats';
+        this.conversation.enteredText = cmd;
         await this.conversation.send();
         this.conversation.enteredText = previouslyEntered;
+    }
+
+    view = false;
+    async viewStats(): Promise<void> {
+        this.view = true;
+        await this.sendCommand('!stats');
     }
 
     readonly characterRegex = /\]Character\[.*[\r\n]+.*\[u\](?<name>.*?)\[\/u\].*?Level (?<level>\d*) (?<class>.*?) \[sup\]LV Cap: (?<lvcap>\d*) \| Stat Cap: (?<statcap>\d*)\[\/sup\][\w\W]*?(?:Devotion: (?<devotion>\d+))?[\r\n]+(?:.*?(?<titles>「.*」))?/i;
     readonly statusRegex = /\]Status Conditions\[.*[\r\n]+\[b\]\t(?<conditions>[\w\W]*?)\[\/b\]/i;
     readonly statsRegex = /\]Stats\[.*[\r\n]+.*?(?<strbase>[\d-]+).*?(?<strtrue>[\d-]+).*?(?<vitbase>[\d-]+).*?(?<vittrue>[\d-]+).*[\r\n]+.*?(?<dexbase>[\d-]+).*?(?<dextrue>[\d-]+).*?(?<intbase>[\d-]+).*?(?<inttrue>[\d-]+).*[\r\n]+.*?(?<chabase>[\d-]+).*?(?<chatrue>[\d-]+).*?(?<lucbase>[\d-]+).*?(?<luctrue>[\d-]+)/i;
-    readonly invRegex = /\]Inventory\[.*[\r\n]+\t\[b\](?<item>.*)\[\/b\][\r\n]+/i;
+    readonly invRegex = /\]Inventory\[.*[\r\n]+\t\[b\]scroll of (?<item>.*)\[\/b\][\r\n]+/i;
     readonly funRegex = /\]Fun Stats\[.*(?<locked>🔒)?[\r\n]+.*\[b\]\s*(?<funstats>.*)\[\/b\]/i;
     readonly otherRegex = /\]Other\[\D*[\r\n]+\D*?(?<lvgain>[\d+-]+)\D*?(?<lvloss>[\d+-]+)\D*?(?<lvsum>[\d+-]+)?\D*[\r\n]+\D*?(?<statgain>[\d+-]+)\D*?(?<statloss>[\d+-]+)\D*?(?<statsum>[\d+-]+)?\D*?(?:[\r\n]+|$)/i;
 
-    updateStats(text: String): void {
-        let characterGroups = text.match(this.characterRegex)?.groups;
-        if (!characterGroups) {
-            log.error("Couldn't parse Character for Stat Sheet", text);
-            return;
-        }
-        let charname = characterGroups.name;
-        if (charname !== core.characters.ownCharacter.name){
-            log.info("Charname didn't match", charname, core.characters.ownCharacter.name);
-            return;
-        }
-        let level = parseInt(characterGroups.level);
-        if (isNaN(level))
-            level = 0;
-        let className = characterGroups.class;
-        let lvcap = parseInt(characterGroups.lvcap);
-        if (isNaN(lvcap))
-            lvcap = 0;
-        let statcap = parseInt(characterGroups.statcap);
-        if (isNaN(statcap))
-            statcap = 0;
-        let devotion = parseInt(characterGroups.devotion);
-        if (isNaN(devotion))
-            devotion = 0;
-        let t = characterGroups.titles;
-        let titles: string[] = [];
-        if (t) {
-            while (t !== '') {
-                titles.push(
-                    t.substring(t.search('「'), t.search('」') + 1)
-                );
-                t = t.substring(t.search('」') + 1);
+    updateStats(text: string): void {
+        try {
+            let characterGroups = text.match(this.characterRegex)?.groups;
+            if (!characterGroups) {
+                log.error("Couldn't parse Character for Stat Sheet", text);
+                return;
             }
-        }
+            let charname = characterGroups.name;
+            if (charname !== core.characters.ownCharacter.name){
+                log.debug("Charname didn't match", charname,",", core.characters.ownCharacter.name);
+                return;
+            }
+            let level = parseInt(characterGroups.level);
+            if (isNaN(level))
+                level = 0;
+            let className = characterGroups.class;
+            let job = JobRepository.getInstance().getJob(className);
+            if(!job){
+                this.statMessage = text;
+                this.sendCommand('!jobinfo ' + className);
+                return;
+            }
+            job = job as Job;
+            let lvcap = parseInt(characterGroups.lvcap);
+            if (isNaN(lvcap))
+                lvcap = 0;
+            let statcap = parseInt(characterGroups.statcap);
+            if (isNaN(statcap))
+                statcap = 0;
+            let devotion = parseInt(characterGroups.devotion);
+            if (isNaN(devotion))
+                devotion = 0;
+            let t = characterGroups.titles;
+            let titles: string[] = [];
+            if (t) {
+                while (t !== '') {
+                    titles.push(
+                        t.substring(t.search('「'), t.search('」') + 1)
+                    );
+                    t = t.substring(t.search('」') + 1);
+                }
+            }
 
-        let statusGroups = text.match(this.statusRegex)?.groups;
-        let conditions: string[] = [];
-        if (statusGroups) {
-            conditions = statusGroups.conditions?.split('|');
-            conditions?.map((cond) => cond.trim());
-        }
+            let statusGroups = text.match(this.statusRegex)?.groups;
+            let conditions: Buff[] = [];
+            if (statusGroups) {
+                let c = statusGroups.conditions?.split('|');
 
-        let statsGroups = text.match(this.statsRegex)?.groups;
-        if (!statsGroups) {
-            log.error("Couldn't parse Stats for Stat Sheet", text);
-            return;
-        }
-        let strbase = parseInt(statsGroups.strbase);
-        if (isNaN(strbase))
-            strbase = 0;
-        let strtrue = parseInt(statsGroups.strtrue);
-        let vitbase = parseInt(statsGroups.vitbase);
-        if (isNaN(vitbase))
-            vitbase = 0;
-        let vittrue = parseInt(statsGroups.vittrue);
-        let dexbase = parseInt(statsGroups.dexbase);
-        if (isNaN(dexbase))
-            dexbase = 0;
-        let dextrue = parseInt(statsGroups.dextrue);
-        let intbase = parseInt(statsGroups.intbase);
-        if (isNaN(intbase))
-            intbase = 0;
-        let inttrue = parseInt(statsGroups.inttrue);
-        let chabase = parseInt(statsGroups.chabase);
-        if (isNaN(chabase))
-            chabase = 0;
-        let chatrue = parseInt(statsGroups.chatrue);
-        let lucbase = parseInt(statsGroups.lucbase);
-        if (isNaN(lucbase))
-            lucbase = 0;
-        let luctrue = parseInt(statsGroups.luctrue);
-        let stats = new Stats(strbase, strtrue, vitbase, vittrue, dexbase, dextrue, intbase, inttrue, chabase, chatrue,
-            lucbase, luctrue);
+                c?.forEach((cond) =>{
+                    let b = BuffRepository.getInstance().getBuff(cond.trim());
+                    if(b) {
+                        conditions.push(b as Buff);
+                    }
+                });
+            }
 
-        let invGroups = text.match(this.invRegex)?.groups;
-        let item = '';
-        if (invGroups) {
-            item = invGroups.item;
-        }
+            let statsGroups = text.match(this.statsRegex)?.groups;
+            if (!statsGroups) {
+                log.error("Couldn't parse Stats for Stat Sheet", text);
+                return;
+            }
+            let strbase = parseInt(statsGroups.strbase);
+            if (isNaN(strbase))
+                strbase = 0;
+            let strtrue = parseInt(statsGroups.strtrue);
+            let vitbase = parseInt(statsGroups.vitbase);
+            if (isNaN(vitbase))
+                vitbase = 0;
+            let vittrue = parseInt(statsGroups.vittrue);
+            let dexbase = parseInt(statsGroups.dexbase);
+            if (isNaN(dexbase))
+                dexbase = 0;
+            let dextrue = parseInt(statsGroups.dextrue);
+            let intbase = parseInt(statsGroups.intbase);
+            if (isNaN(intbase))
+                intbase = 0;
+            let inttrue = parseInt(statsGroups.inttrue);
+            let chabase = parseInt(statsGroups.chabase);
+            if (isNaN(chabase))
+                chabase = 0;
+            let chatrue = parseInt(statsGroups.chatrue);
+            let lucbase = parseInt(statsGroups.lucbase);
+            if (isNaN(lucbase))
+                lucbase = 0;
+            let luctrue = parseInt(statsGroups.luctrue);
+            let stats = new Stats(strbase, strtrue, vitbase, vittrue, dexbase, dextrue, intbase, inttrue, chabase, chatrue,
+                lucbase, luctrue);
 
-        let funGroups = text.match(this.funRegex)?.groups;
-        let locked = false;
-        let funstats: FunStat[] = [];
-        if (funGroups) {
-            if(funGroups.locked)
-                locked = true;
-            let f = funGroups.funstats.split('  ');
-            f.forEach((funstat) => funstats.push(FunStat.parseFunStat(funstat)));
-        }
+            let invGroups = text.match(this.invRegex)?.groups;
+            let item: Buff | null = null;
+            if (invGroups) {
+                item = BuffRepository.getInstance().getBuff(invGroups.item);
+            }
 
-        let otherGroups = text.match(this.otherRegex)?.groups;
-        if (!otherGroups) {
-            log.error("Couldn't parse Other for Stat Sheet", text);
-            return;
-        }
-        let lvgain = parseInt(otherGroups.lvgain);
-        if (isNaN(lvgain))
-            lvgain = 0;
-        let lvloss = parseInt(otherGroups.lvloss);
-        if (isNaN(lvloss))
-            lvloss = 0;
-        let lvsum = parseInt(otherGroups.lvsum);
-        if (isNaN(lvsum))
-            lvsum = 0;
-        let statgain = parseInt(otherGroups.statgain);
-        if (isNaN(statgain))
-            statgain = 0;
-        let statloss = parseInt(otherGroups.statloss);
-        if (isNaN(statloss))
-            statloss = 0;
-        let statsum = parseInt(otherGroups.statsum);
-        if (isNaN(statsum))
-            statsum = 0;
+            let funGroups = text.match(this.funRegex)?.groups;
+            let locked = false;
+            let funstats: FunStat[] = [];
+            if (funGroups) {
+                if(funGroups.locked)
+                    locked = true;
+                let f = funGroups.funstats.split('  ');
+                f.forEach((funstat) => funstats.push(FunStat.parseFunStat(funstat)));
+            }
 
-        this.statSheet = new StatSheet(charname, className, level, lvcap, statcap, devotion, titles, conditions, stats,
-            item, locked, funstats, lvgain, lvloss, lvsum, statgain, statloss, statsum);
+            let otherGroups = text.match(this.otherRegex)?.groups;
+            if (!otherGroups) {
+                log.error("Couldn't parse Other for Stat Sheet", text);
+                return;
+            }
+            let lvgain = parseInt(otherGroups.lvgain);
+            if (isNaN(lvgain))
+                lvgain = 0;
+            let lvloss = parseInt(otherGroups.lvloss);
+            if (isNaN(lvloss))
+                lvloss = 0;
+            let lvsum = parseInt(otherGroups.lvsum);
+            if (isNaN(lvsum))
+                lvsum = 0;
+            let statgain = parseInt(otherGroups.statgain);
+            if (isNaN(statgain))
+                statgain = 0;
+            let statloss = parseInt(otherGroups.statloss);
+            if (isNaN(statloss))
+                statloss = 0;
+            let statsum = parseInt(otherGroups.statsum);
+            if (isNaN(statsum))
+                statsum = 0;
+
+            this.statSheet = new StatSheet(charname, job, level, lvcap, statcap, devotion, titles, conditions, stats,
+                item, locked, funstats, lvgain, lvloss, lvsum, statgain, statloss, statsum);
+
+            //log.info(this.statSheet);
+            //log.info(this.statSheet.job);
+            if(this.view)
+                this.displayStats();
+        } catch(err) {
+            log.error(text, err);
+            throw err;
+        }
     }
 
-    get briefStatDesc(): string {
-        if(!this.statSheet){
-            const span = document.createElement('span');
-            span.appendChild(
-                document.createTextNode('No Stats known yet! Press \'Update Stats\'!')
-            );
-            return span.outerHTML;
-        }
-        return this.statSheet.getBriefDescription().outerHTML;
+    displayStats(): void {
+        this.view = false;
+    }
+
+    showStatView(data: StatSheet | Job | Buff): void {
+        this.statViewData = data;
+        (<StatSheetView>this.$refs['statView']).show();
     }
 
     get characterImage(): string {
@@ -1155,6 +1224,12 @@ export default class ConversationView extends Vue {
 }
 
 .highlight:hover, .highlight:hover:after, .highlight:hover:before, .highlight:hover i, .highlight:hover span {
-    backdrop-filter: invert(30%) !important;
+    background-color: rgba(255,255,255,0.3) !important;
+}
+
+.btn-stattrack {
+    -webkit-appearance: none !important;
+    -webkit-border-radius: 0px !important;
+    border: 1px solid rgba(0,0,0,0.3) !important;
 }
 </style>

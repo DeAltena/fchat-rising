@@ -32,9 +32,16 @@
         </div>
 
         <character-preview
+            class="character-preview"
             :style="previewStyles.CharacterPreviewHelper"
             ref="characterPreview"
         ></character-preview>
+
+        <job-preview
+            class="job-preview"
+            :style="previewStyles.JobPreviewHelper"
+            ref="jobPreview"
+            ></job-preview>
 
         <i id="preview-spinner" class="fas fa-circle-notch fa-spin" v-show="shouldShowSpinner"></i>
         <i id="preview-error" class="fas fa-times" v-show="shouldShowError"></i>
@@ -49,6 +56,7 @@
     import { EventBus, EventBusEvent } from './event-bus';
     import {domain} from '../../bbcode/core';
     import {ImageDomMutator} from './image-dom-mutator';
+    import JobPreview from '../leveldrain/JobPreview.vue';
 
     import {
       ExternalImagePreviewHelper,
@@ -63,6 +71,7 @@
     import Timer = NodeJS.Timer;
     import IpcMessageEvent = Electron.IpcMessageEvent;
     import CharacterPreview from './CharacterPreview.vue';
+    import {JobPreviewHelper} from "../leveldrain/JobPreviewHelper";
 
     const screen = remote.screen;
 
@@ -80,7 +89,8 @@
 
     @Component({
         components: {
-          'character-preview': CharacterPreview
+            'character-preview': CharacterPreview,
+            'job-preview': JobPreview
         }
     })
     export default class ImagePreview extends Vue {
@@ -93,7 +103,8 @@
           [
             new ExternalImagePreviewHelper(this),
             new LocalImagePreviewHelper(this),
-            new CharacterPreviewHelper(this)
+            new CharacterPreviewHelper(this),
+            new JobPreviewHelper(this)
             // new ChannelPreviewHelper(this)
           ]
         );
@@ -133,6 +144,7 @@
         async onMounted(): Promise<void> {
             console.info('Mounted ImagePreview');
 
+
             // tslint:disable-next-line:no-floating-promises
             this.jsMutator.init();
 
@@ -150,13 +162,14 @@
                     // console.log('Event show', eventData.url);
 
                     const url = this.negotiateUrl(eventData.url as string || '');
-                    const isInternalPreview = CharacterPreviewHelper.FLIST_CHARACTER_PROTOCOL_TESTER.test(url);
+                    const isInternalPreview = CharacterPreviewHelper.FLIST_CHARACTER_PROTOCOL_TESTER.test(url) ;
 
                     if (
                       ((!core.state.settings.risingCharacterPreview) && (isInternalPreview))
                       || ((!core.state.settings.risingLinkPreview) && (!isInternalPreview))
                     ) {
-                      return;
+                        this.debugLog("Had to bother with this after all");
+                        return;
                     }
 
                     this.show(url);
@@ -623,6 +636,9 @@
           return this.$refs.characterPreview as CharacterPreview;
         }
 
+        getJobPreview(): JobPreview {
+            return this.$refs.jobPreview as JobPreview;
+        }
 
         reset(): void {
             this.previewManager = new PreviewManager(
@@ -630,7 +646,8 @@
               [
                 new ExternalImagePreviewHelper(this),
                 new LocalImagePreviewHelper(this),
-                new CharacterPreviewHelper(this)
+                new CharacterPreviewHelper(this),
+                new JobPreviewHelper(this)
                 // new ChannelPreviewHelper(this)
               ]
             );

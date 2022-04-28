@@ -1,3 +1,5 @@
+import {Buff, Job} from "./LevelDrainData";
+
 export class Stats {
     strbase: number;
     strtrue: number;
@@ -55,15 +57,15 @@ export class FunStat {
 
 export class StatSheet {
     name: string;
-    className: string;
+    job: Job;
     lvl: number;
     lvlcap: number;
     statcap: number;
     devotion: number;
     titles: string[];
-    conditions: string[];
+    conditions: Buff[];
     stats: Stats;
-    item: string;
+    item: Buff | null;
     locked: boolean;
     funStats: FunStat[];
     lvlgained: number;
@@ -73,11 +75,11 @@ export class StatSheet {
     statslost: number;
     statssum: number;
 
-    constructor(name: string, className: string, lvl: number, lvlcap: number, statcap: number, devotion: number, titles: string[], conditions: string[],
-                stats: Stats, item: string, locked: boolean, funStats: FunStat[], lvlgained: number, lvllost: number, lvlsum: number,
+    constructor(name: string, job: Job, lvl: number, lvlcap: number, statcap: number, devotion: number, titles: string[], conditions: Buff[],
+                stats: Stats, item: Buff | null, locked: boolean, funStats: FunStat[], lvlgained: number, lvllost: number, lvlsum: number,
                 statsgained: number, statslost: number, statssum: number) {
         this.name = name;
-        this.className = className;
+        this.job = job;
         this.lvl = lvl;
         this.lvlcap = lvlcap;
         this.statcap = statcap;
@@ -94,43 +96,5 @@ export class StatSheet {
         this.statsgained = statsgained;
         this.statslost = statslost;
         this.statssum = statssum;
-    }
-
-    getBriefDescription(): HTMLElement {
-        const parent = document.createElement('span');
-        parent.appendChild(
-            document.createTextNode('You are ')
-        );
-
-        const nameTag = document.createElement('strong');
-        nameTag.appendChild(
-            document.createTextNode(this.name)
-        );
-        parent.appendChild(nameTag);
-        parent.appendChild(
-            document.createTextNode(', the ')
-        );
-
-        const lvlSpan = document.createElement('span');
-        lvlSpan.setAttribute('title', `Current Level Cap: ${this.lvlcap}`);
-        lvlSpan.appendChild(
-            document.createTextNode(`Level ${this.lvl}`)
-        );
-        parent.appendChild(lvlSpan);
-        parent.appendChild(
-            document.createTextNode(' ')
-        );
-
-        const classSpan = document.createElement('span');
-        classSpan.style.setProperty('text-decoration', 'underline');
-        classSpan.setAttribute('class', 'highlight');
-        classSpan.appendChild(
-            document.createTextNode(`${this.className}`)
-        );
-        parent.appendChild(classSpan);
-        parent.appendChild(
-            document.createTextNode('.')
-        );
-        return parent;
     }
 }

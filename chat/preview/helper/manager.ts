@@ -18,8 +18,15 @@ export class PreviewManager {
   private debugMode = false;
 
   constructor(parent: ImagePreview, helperInstances: ImagePreviewHelper[]) {
-    this.parent = parent;
-    this.helpers = _.map(helperInstances, (helper) => ({ helper, renderStyle: {}}));
+      try {
+          this.parent = parent;
+          this.helpers = _.map(helperInstances, (helper) => ({ helper, renderStyle: {}}));
+          console.log(this.helpers);
+      } catch (err) {
+          console.log(helperInstances, err);
+          throw err;
+      }
+
   }
 
   match(domain: string | undefined, url: string | undefined): PreviewManagerHelper | undefined {
@@ -31,14 +38,13 @@ export class PreviewManager {
   }
 
   renderStyles(): Record<string, RenderStyle> {
-    _.each(
-      this.helpers,
-      (h) => {
-        h.renderStyle = h.helper.renderStyle();
-
-        this.debugLog('ImagePreview: pm.renderStyles()', h.helper.constructor.name, JSON.parse(JSON.stringify(h.renderStyle)));
-      }
-    );
+        _.each(
+              this.helpers,
+              (h) => {
+                  h.renderStyle = h.helper.renderStyle();
+                  this.debugLog('ImagePreview: pm.renderStyles()', h.helper.constructor.name, JSON.parse(JSON.stringify(h.renderStyle)));
+              }
+        );
 
     return _.fromPairs(
       _.map(

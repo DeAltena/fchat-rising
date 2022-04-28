@@ -8,12 +8,17 @@ import core from './core';
 import {Conversation} from './interfaces';
 import UserView from './UserView.vue';
 import { Scoring } from '../learn/matcher-types';
+import ChatMessage = Conversation.ChatMessage;
+import {JobRepository} from "./leveldrain/LevelDrainData";
+import JobView from "./leveldrain/JobView.vue";
+import ConversationView from "./ConversationView.vue";
 
 const userPostfix: {[key: number]: string | undefined} = {
     [Conversation.Message.Type.Message]: ': ',
     [Conversation.Message.Type.Ad]: ': ',
     [Conversation.Message.Type.Action]: ''
 };
+
 @Component({
     render(this: MessageView, createElement: CreateElement): VNode {
         const message = this.message;
@@ -43,19 +48,56 @@ const userPostfix: {[key: number]: string | undefined} = {
             );
             if(message.isHighlight) classes += ' message-highlight';
         }
-        const isAd = message.type === Conversation.Message.Type.Ad && !this.logs;
-        children.push(createElement(BBCodeView(core.bbCodeParser),
-            {props: {unsafeText: message.text, afterInsert: isAd ? (elm: HTMLElement) => {
-                    setImmediate(() => {
-                        elm = elm.parentElement!;
-                        if(elm.scrollHeight > elm.offsetHeight) {
-                            const expand = document.createElement('div');
-                            expand.className = 'expand fas fa-caret-down';
-                            expand.addEventListener('click', function(): void { this.parentElement!.className += ' expanded'; });
-                            elm.appendChild(expand);
+
+        const replacements = [/(\[b\]level drain stat sheet\[\/b\].*?\D*\d* )(?<job>[^ ]*)(.*)/is];
+        const fromStatTrack = message.type === Conversation.Message.Type.Message && (message as ChatMessage).sender?.name === 'StatTrack';
+        let foundReplacement = false;
+        if(fromStatTrack) {
+            replacements.every((regex) => {
+                const match = message?.text.match(regex);
+                if(match) {
+                    const groups = match.groups;
+                    match.forEach((m) => {
+                        if(m === message.text)
+                            return;
+
+                        if(m === groups?.job){
+                            const j = JobRepository.getInstance().getJob(groups.job);
+                            if(j) {
+                                children.push(createElement(JobView,
+                                    {props: {job: j, parent: this.parent}}));
+                            } else {
+                                children.push(createElement(BBCodeView(core.bbCodeParser),
+                                    {props: {unsafeText: m}}));
+                            }
+                        } else {
+                            children.push(createElement(BBCodeView(core.bbCodeParser),
+                                {props: {unsafeText: m}}));
                         }
                     });
-                } : undefined}}));
+                    foundReplacement = true;
+                    return false;
+                }
+                return true;
+            });
+        }
+
+
+        if(!foundReplacement) {
+            const isAd = message.type === Conversation.Message.Type.Ad && !this.logs;
+            children.push(createElement(BBCodeView(core.bbCodeParser),
+                {props: {unsafeText: message.text, afterInsert: isAd ? (elm: HTMLElement) => {
+                            setImmediate(() => {
+                                elm = elm.parentElement!;
+                                if(elm.scrollHeight > elm.offsetHeight) {
+                                    const expand = document.createElement('div');
+                                    expand.className = 'expand fas fa-caret-down';
+                                    expand.addEventListener('click', function(): void { this.parentElement!.className += ' expanded'; });
+                                    elm.appendChild(expand);
+                                }
+                            });
+                        } : undefined}}));
+        }
         const node = createElement('div', {attrs: {class: classes}}, children);
         node.key = message.id;
         return node;
@@ -70,6 +112,8 @@ export default class MessageView extends Vue {
     readonly channel?: Channel;
     @Prop
     readonly logs?: true;
+    @Prop
+    readonly parent: ConversationView | null;
 
     scoreClasses = this.getMessageScoreClasses(this.message);
     filterClasses = this.getMessageFilterClasses(this.message);

@@ -1,18 +1,14 @@
 <template>
-    <div class="job-preview">
-        <div v-if="job" class="row">
+    <div class="buff-preview">
+        <div v-if="buff" class="row">
             <div class="col-12">
                 <h1 class="user-view">
-                    <span class="job-name">{{ job.name }}</span>
+                    <span class="buff-name" :class="buff.getClass()">{{ buff.taglessName() }}</span>
                 </h1>
-                <span>
-                    <bbcode :text="`[b]\t${job.getTagString()}[/b]`"></bbcode>
-                    <template v-if="job.convertJob">&nbsp;Converts: <job-view :job="job.convertJob"></job-view></template>
-                </span>
-                <h3 class="desc">{{ job.desc }}</h3>
-                <bbcode :text="job.scaling"></bbcode> | Innate: <bbcode v-if="job.innate" :text="`${job.innate.taglessName()}`"></bbcode><span v-else>N/A</span><br>
-                <bbcode :text="`[b]Inflicts:[/b] ${job.getBuffsString()}`"></bbcode>
-
+                Cost: {{ buff.cost }} | Drained Stat: {{ buff.getStat() }}
+                <h3 class="desc">{{ buff.desc }}</h3>
+                <bbcode :text="`[b]From:[/b] `"></bbcode>
+                <template v-for="job in buff.fromJobs"> <job-view :job="job"></job-view><span v-if="buff.fromJobs[buff.fromJobs.length - 1] !== job">, </span></template>
             </div>
         </div>
         <div v-else>
@@ -26,7 +22,7 @@ import {Component, Hook} from '@f-list/vue-ts';
 import Vue from 'vue';
 import core from '../core';
 import {BBCodeView} from '../../bbcode/view';
-import {Job, JobRepository} from "./LevelDrainData";
+import {Buff, BuffRepository} from "./LevelDrainData";
 import JobView from "./JobView.vue";
 
 @Component({
@@ -36,13 +32,13 @@ import JobView from "./JobView.vue";
     }
 })
 export default class JobPreview extends Vue {
-    job?: Job;
-    jobName: string = '';
+    buff?: Buff;
+    buffName: string = '';
 
 
     @Hook('mounted')
     mounted(): void {
-        this.load(this.jobName, true);
+        this.load(this.buffName, true);
     }
 
 
@@ -52,26 +48,27 @@ export default class JobPreview extends Vue {
     }
 
 
-    load(jobName: string, force: boolean = false): void {
+    load(buffName: string, force: boolean = false): void {
         if (
-            (this.jobName === jobName)
+            (this.buffName === buffName)
             && (!force)
         ) {
             return;
         }
 
-        this.jobName = jobName;
+        this.buffName = buffName;
 
         setTimeout(async () => {
-            this.job = JobRepository.getInstance().getJob(jobName) as Job;
+            this.buff = BuffRepository.getInstance().getBuff(this.buffName) as Buff;
         }, 0);
     }
 }
 </script>
 
 <style lang="scss">
-.job-preview {
-    padding: 10px 15px 10px 10px;
+.buff-preview {
+    padding: 10px;
+    padding-right: 15px;
     background-color: var(--input-bg);
     max-height: 100%;
     overflow: hidden;

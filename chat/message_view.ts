@@ -1,19 +1,19 @@
-import { Component, Hook, Prop } from '@f-list/vue-ts';
+import {Component, Hook, Prop} from '@f-list/vue-ts';
 import {CreateElement, default as Vue, VNode, VNodeChildrenArrayContents} from 'vue';
 import {Channel} from '../fchat';
-import { Score } from '../learn/matcher';
+import {Score} from '../learn/matcher';
 import {BBCodeView} from '../bbcode/view';
 import {formatTime} from './common';
 import core from './core';
 import {Conversation} from './interfaces';
 import UserView from './UserView.vue';
-import { Scoring } from '../learn/matcher-types';
+import {Scoring} from '../learn/matcher-types';
 import ChatMessage = Conversation.ChatMessage;
-import {JobRepository} from "./leveldrain/LevelDrainData";
-import JobView from "./leveldrain/JobView.vue";
-import ConversationView from "./ConversationView.vue";
+import {Buff, Job, JobRepository} from './leveldrain/LevelDrainData';
+import JobView from './leveldrain/JobView.vue';
+import {StatSheet} from './leveldrain/StatSheet';
 
-const userPostfix: {[key: number]: string | undefined} = {
+const userPostfix: { [key: number]: string | undefined } = {
     [Conversation.Message.Type.Message]: ': ',
     [Conversation.Message.Type.Ad]: ': ',
     [Conversation.Message.Type.Action]: ''
@@ -40,39 +40,58 @@ const userPostfix: {[key: number]: string | undefined} = {
             ((this.classes !== undefined) ? ` ${this.classes}` : '') +
             ` ${this.scoreClasses}` +
             ` ${this.filterClasses}`;
-        if(message.type !== Conversation.Message.Type.Event) {
+        if (message.type !== Conversation.Message.Type.Event) {
             children.push(
-                (message.type === Conversation.Message.Type.Action) ? createElement('i', { class: 'message-pre fas fa-star' }) : '',
+                (message.type === Conversation.Message.Type.Action) ? createElement('i', {class: 'message-pre fas fa-star'}) : '',
                 createElement(UserView, {props: {character: message.sender, channel: this.channel}}),
-                userPostfix[message.type] !== undefined ? createElement('span', { class: 'message-post' }, userPostfix[message.type]) : ' '
+                userPostfix[message.type] !== undefined ? createElement('span', {class: 'message-post'}, userPostfix[message.type]) : ' '
             );
-            if(message.isHighlight) classes += ' message-highlight';
+            if (message.isHighlight) classes += ' message-highlight';
         }
 
-        const replacements = [/(\[b\]level drain stat sheet\[\/b\].*?\D*\d* )(?<job>[^ ]*)(.*)/is];
+        const replacements = [/(\[b\]level drain stat sheet\[\/b\].*?\D*\d* )(?<job>[^ ]*)(.*)/is, //Stat Sheet
+            /^(.*class is now.*?\])(?<job>[^\[]*)(.*)$/is, //Class Change Result + Dungeon Force Change
+            /^(.*you have.*?unlocked.*?\] )(?<job>[^\[]*)(.*)$/is, //Dungeon Unlock
+            /^(.*is registered as a.*?Level.*\] )(?<job>[^.]*)(.*)$/is, //!check result
+            /^(.*class-change .*? into )(?<job>[^!]*)(.*)$/is, //Class Change Request
+            /^(\[u])(?<job>[^\[]*)(\[\/u]\t \[sub].*?Converts: )(?<subjob>[^\[]*)(.*)/is //!jobinfo result
+        ];
         const fromStatTrack = message.type === Conversation.Message.Type.Message && (message as ChatMessage).sender?.name === 'StatTrack';
         let foundReplacement = false;
-        if(fromStatTrack) {
+        let closingTags = '';
+        if (fromStatTrack) {
             replacements.every((regex) => {
                 const match = message?.text.match(regex);
-                if(match) {
+                if (match) {
                     const groups = match.groups;
                     match.forEach((m) => {
-                        if(m === message.text)
+                        if (m === message.text)
                             return;
 
-                        if(m === groups?.job){
+                        if (m === groups?.job || m === groups?.subjob) {
                             const j = JobRepository.getInstance().getJob(groups.job);
-                            if(j) {
-                                children.push(createElement(JobView,
-                                    {props: {job: j, parent: this.parent}}));
+                            if (j) {
+                                let vnode: VNode;
+                                if(m === groups?.subjob) {
+                                    let subnode = createElement(JobView,
+                                        {props: {job: j, clickEvent: this.clickEvent}});
+                                    vnode = createElement('sub', {}, [subnode]);
+                                } else {
+                                    vnode = createElement(JobView,
+                                        {props: {job: j, clickEvent: this.clickEvent}});
+                                }
+                                children.push(vnode);
                             } else {
+                                m = closingTags + m;
                                 children.push(createElement(BBCodeView(core.bbCodeParser),
                                     {props: {unsafeText: m}}));
+                                closingTags = MessageView.getUnclosedTags(m);
                             }
                         } else {
+                            m = closingTags + m;
                             children.push(createElement(BBCodeView(core.bbCodeParser),
                                 {props: {unsafeText: m}}));
+                            closingTags = MessageView.getUnclosedTags(m);
                         }
                     });
                     foundReplacement = true;
@@ -83,20 +102,26 @@ const userPostfix: {[key: number]: string | undefined} = {
         }
 
 
-        if(!foundReplacement) {
+        if (!foundReplacement) {
             const isAd = message.type === Conversation.Message.Type.Ad && !this.logs;
             children.push(createElement(BBCodeView(core.bbCodeParser),
-                {props: {unsafeText: message.text, afterInsert: isAd ? (elm: HTMLElement) => {
+                {
+                    props: {
+                        unsafeText: message.text, afterInsert: isAd ? (elm: HTMLElement) => {
                             setImmediate(() => {
                                 elm = elm.parentElement!;
-                                if(elm.scrollHeight > elm.offsetHeight) {
+                                if (elm.scrollHeight > elm.offsetHeight) {
                                     const expand = document.createElement('div');
                                     expand.className = 'expand fas fa-caret-down';
-                                    expand.addEventListener('click', function(): void { this.parentElement!.className += ' expanded'; });
+                                    expand.addEventListener('click', function (): void {
+                                        this.parentElement!.className += ' expanded';
+                                    });
                                     elm.appendChild(expand);
                                 }
                             });
-                        } : undefined}}));
+                        } : undefined
+                    }
+                }));
         }
         const node = createElement('div', {attrs: {class: classes}}, children);
         node.key = message.id;
@@ -112,8 +137,8 @@ export default class MessageView extends Vue {
     readonly channel?: Channel;
     @Prop
     readonly logs?: true;
-    @Prop
-    readonly parent: ConversationView | null;
+    @Prop()
+    readonly clickEvent: ((j: StatSheet | Job | Buff) => void) | undefined = undefined;
 
     scoreClasses = this.getMessageScoreClasses(this.message);
     filterClasses = this.getMessageFilterClasses(this.message);
@@ -144,7 +169,7 @@ export default class MessageView extends Vue {
         this.filterClasses = this.getMessageFilterClasses(this.message);
 
         if (this.scoreClasses !== oldScoreClasses || this.filterClasses !== oldFilterClasses) {
-           this.$forceUpdate();
+            this.$forceUpdate();
         }
 
         if (this.scoreWatcher) {
@@ -169,5 +194,35 @@ export default class MessageView extends Vue {
         }
 
         return 'filter-match';
+    }
+
+    static getUnclosedTags(text: string): string {
+        const tags = MessageView.getOpenedTags(text);
+        const ret: string[] = [];
+
+        tags.forEach((tag) => {
+            const idx = text.lastIndexOf(tag);
+            if(text.indexOf(MessageView.getClosingTag(tag), idx) === -1) {
+                ret.push(tag);
+            }
+        });
+
+        return ret.join();
+    }
+
+    static tagRegex = /(\[[^\/\[]*])/isg;
+    static getOpenedTags(text: string): string[] {
+        const ret: string[] = [];
+        let match;
+        while ((match = MessageView.tagRegex.exec(text)) !== null) {
+            ret.push(match[0]);
+        }
+        return ret;
+    }
+
+    static getClosingTag(tag: string): string {
+        if(tag.startsWith('[color='))
+            return '[/color]';
+        return `[/${tag.substring(1)}`;
     }
 }

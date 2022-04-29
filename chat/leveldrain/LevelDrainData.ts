@@ -6,16 +6,53 @@ export class Buff {
     cost: number;
     desc: string;
     from: string[];
+    fromJobs: Job[] = [];
+    colour = '';
 
     constructor(name: string, cost: number, desc: string, from: string[]) {
         this.name = name;
         this.cost = cost;
         this.desc = desc;
         this.from = from;
+        this.scanColour(name);
+    }
+
+    readonly colourRegex = /\[color=(?<col>[^\]]*)\]/i;
+    private scanColour(name: string): void {
+        const colour = name.match(this.colourRegex)?.groups?.col;
+        this.colour = !colour ? '' : colour;
     }
 
     taglessName(): string {
         return BuffRepository.stripTags(this.name);
+    }
+
+    underlinedName(): string {
+        return `${this.name.substring(0, this.name.indexOf(']') + 1)}[u]${this.name.substring(this.name.indexOf(']') + 1,
+            this.name.indexOf('[', this.name.indexOf(']') + 1))}[/u]${this.name.substring(this.name.indexOf('[', this.name.indexOf(']') + 1))}`;
+    }
+
+    getClass(): string {
+        return `${this.colour}Text`;
+    }
+
+    getStat(): string {
+        switch (this.colour){
+            case 'orange':
+                return 'STR';
+            case 'yellow':
+                return 'VIT';
+            case 'red':
+                return 'DEX';
+            case 'cyan':
+                return 'INT';
+            case 'pink':
+                return 'CHA';
+            case 'green':
+                return 'LUC';
+            default:
+                return 'LVL';
+        }
     }
 }
 
@@ -68,6 +105,17 @@ export class BuffRepository {
         } catch (err) {
             log.error(buffs, err);
             throw err;
+        }
+    }
+
+    linkFromJobs(jobRepo: JobRepository): void {
+        for(const [_, buff] of Object.entries(this.buffs)) {
+            buff.from.forEach((buffName) => {
+                const job = jobRepo.getJob(buffName);
+                if(job) {
+                    buff.fromJobs.push(job);
+                }
+            });
         }
     }
 
@@ -409,6 +457,7 @@ export class Job {
     desc: string;
     tags: string[];
     convert: string;
+    convertJob: Job | null = null;
     scaling: string;
     innate: Buff | null;
     buffs: Buff[];
@@ -442,6 +491,8 @@ export class JobRepository {
 
     private constructor() {
         this.parseJobs(JobRepository.getJobsRaw());
+        BuffRepository.getInstance().linkFromJobs(this);
+        this.linkConverts();
     }
 
     static getInstance(): JobRepository {
@@ -454,13 +505,19 @@ export class JobRepository {
         try {
             if(!name)
                 return null;
-            return this.jobs[name.toLowerCase()];
+            return this.jobs[name.toLowerCase().trim()];
         } catch (err) {
             return null;
         }
     }
 
     readonly jobRegex = /\[u\](?<jobname>.*?)\[\/u\].*?\[b\](?<jobtags>.*?)(?:\[\/b\]|Converts: (?<converts>.*?)\[\/b\]).*[\r\n]+(?<jobdesc>.*)[\r\n]+(?<scaling>.*?) \| Innate: (?<innate>.*)[\r\n]+.*?\[sub\](?<buffs>.*)\[\/sub\]/gmi;
+
+    linkConverts(): void {
+        for(const [_, job] of Object.entries(this.jobs)) {
+            job.convertJob = this.getJob(job.convert?.trim());
+        }
+    }
 
     parseJobs(jobs: string): void {
         let match;

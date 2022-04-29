@@ -5,9 +5,9 @@
 <script lang="ts">
 import { Component, Hook, Prop } from '@f-list/vue-ts';
 import Vue from 'vue';
-import {Job} from "./LevelDrainData";
+import {Buff, Job} from "./LevelDrainData";
 import {EventBus} from "../preview/event-bus";
-import ConversationView from "../ConversationView.vue"
+import {StatSheet} from "./StatSheet";
 
 
 @Component({
@@ -20,7 +20,7 @@ export default class JobView extends Vue {
     readonly job!: Job;
 
     @Prop()
-    readonly parent: ConversationView | null = null;
+    readonly clickEvent: ((j: StatSheet | Job | Buff) => void) | undefined = undefined;
 
     @Hook('mounted')
     onMounted(): void {
@@ -65,14 +65,17 @@ export default class JobView extends Vue {
     }
 
     onClick(): void {
-        if(this.parent)
-            this.parent.showStatView(this.job);
+        if(this.clickEvent)
+            this.clickEvent(this.job);
     }
 }
 </script>
 <style lang="scss">
 .job-view {
     cursor: pointer;
+}
+
+.job-view:hover {
     text-decoration: underline;
 }
 </style>

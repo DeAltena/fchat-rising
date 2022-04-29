@@ -142,8 +142,9 @@
              @scroll="onMessagesScroll" style="flex:1;overflow:auto;margin-top:2px">
             <template v-for="message in messages">
                 <message-view :message="message" :channel="isChannel(conversation) ? conversation.channel : undefined"
-                              :key="message.id" :parent="this"
-                              :classes="message == conversation.lastRead ? 'last-read' : ''">
+                              :key="message.id"
+                              :classes="message == conversation.lastRead ? 'last-read' : ''"
+                              :clickEvent="showStatView">
                 </message-view>
                 <span v-if="hasSFC(message) && message.sfc.action === 'report'" :key="'r' + message.id">
                     <a :href="'https://www.f-list.net/fchat/getLog.php?log=' + message.sfc.logid"
@@ -163,7 +164,7 @@
             </div>
             <div id="statheader" v-else>
                 You are <strong> {{ statSheet.name }}</strong>, the <span :title="`Current Level Cap: ${statSheet.lvlcap}`">Level {{ statSheet.lvl }}</span>
-                &nbsp;<job :job="statSheet.job" :parent="this"></job>.
+                &nbsp;<job :job="statSheet.job" :clickEvent="showStatView"></job>.
 
             </div>
             <a class="btn btn-light btn-sm btn-stattrack">Inflict (De)Buff on...</a>
@@ -226,7 +227,7 @@
                  :character="conversation.character"></ad-view>
         <channel-list ref="channelList" v-if="isPrivate(conversation)"
                       :character="conversation.character"></channel-list>
-        <stat-view ref="statView" :data="statViewData" v-if="isStatTrack(conversation)"></stat-view>
+        <stat-view ref="statView" :data="statViewData" :click-event="showStatView" v-if="isStatTrack(conversation)"></stat-view>
     </div>
 </template>
 
@@ -315,7 +316,6 @@ export default class ConversationView extends Vue {
     showNonMatchingAds = true;
     statSheet: StatSheet | null = null;
     statViewData: StatSheet | Job | Buff | null = null;
-
 
     @Hook('beforeMount')
     async onBeforeMount(): Promise<void> {

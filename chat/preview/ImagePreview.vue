@@ -43,6 +43,12 @@
             ref="jobPreview"
             ></job-preview>
 
+        <buff-preview
+            class="buff-preview"
+            :style="previewStyles.BuffPreviewHelper"
+            ref="buffPreview"
+            ></buff-preview>
+
         <i id="preview-spinner" class="fas fa-circle-notch fa-spin" v-show="shouldShowSpinner"></i>
         <i id="preview-error" class="fas fa-times" v-show="shouldShowError"></i>
     </div>
@@ -57,6 +63,7 @@
     import {domain} from '../../bbcode/core';
     import {ImageDomMutator} from './image-dom-mutator';
     import JobPreview from '../leveldrain/JobPreview.vue';
+    import BuffPreview from '../leveldrain/BuffPreview.vue';
 
     import {
       ExternalImagePreviewHelper,
@@ -72,6 +79,7 @@
     import IpcMessageEvent = Electron.IpcMessageEvent;
     import CharacterPreview from './CharacterPreview.vue';
     import {JobPreviewHelper} from "../leveldrain/JobPreviewHelper";
+    import {BuffPreviewHelper} from "../leveldrain/BuffPreviewHelper";
 
     const screen = remote.screen;
 
@@ -90,7 +98,8 @@
     @Component({
         components: {
             'character-preview': CharacterPreview,
-            'job-preview': JobPreview
+            'job-preview': JobPreview,
+            'buff-preview': BuffPreview
         }
     })
     export default class ImagePreview extends Vue {
@@ -104,7 +113,8 @@
             new ExternalImagePreviewHelper(this),
             new LocalImagePreviewHelper(this),
             new CharacterPreviewHelper(this),
-            new JobPreviewHelper(this)
+            new JobPreviewHelper(this),
+            new BuffPreviewHelper(this)
             // new ChannelPreviewHelper(this)
           ]
         );
@@ -601,7 +611,6 @@
             }
         }
 
-
         toggleStickyMode(): void {
             this.sticky = !this.sticky;
 
@@ -609,11 +618,9 @@
                 this.hide();
         }
 
-
         toggleJsMode(): void {
             this.runJs = !this.runJs;
         }
-
 
         reloadUrl(): void {
             const helper = this.previewManager.getVisiblePreview();
@@ -626,11 +633,9 @@
             this.getWebview().reload();
         }
 
-
         getWebview(): Electron.WebviewTag {
             return this.$refs.imagePreviewExt as Electron.WebviewTag;
         }
-
 
         getCharacterPreview(): CharacterPreview {
           return this.$refs.characterPreview as CharacterPreview;
@@ -640,6 +645,10 @@
             return this.$refs.jobPreview as JobPreview;
         }
 
+        getBuffPreview(): BuffPreview {
+            return this.$refs.buffPreview as BuffPreview;
+        }
+
         reset(): void {
             this.previewManager = new PreviewManager(
               this,
@@ -647,7 +656,8 @@
                 new ExternalImagePreviewHelper(this),
                 new LocalImagePreviewHelper(this),
                 new CharacterPreviewHelper(this),
-                new JobPreviewHelper(this)
+                new JobPreviewHelper(this),
+                new BuffPreviewHelper(this)
                 // new ChannelPreviewHelper(this)
               ]
             );

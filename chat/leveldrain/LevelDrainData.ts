@@ -72,7 +72,7 @@ export class BuffRepository {
 
     getBuff(name: string): Buff | null {
         try {
-            return this.buffs[BuffRepository.stripTags(name).toLowerCase()];
+            return this.buffs[BuffRepository.stripTags(name.trim()).toLowerCase()];
         } catch (err) {
             log.error(name, err);
             return null;
@@ -119,10 +119,13 @@ export class BuffRepository {
         }
     }
 
+    static readonly tagRegex = /^(?:\s*\[.*?\])*(?<name>[^\][]*)(?:\[.*?\]\s*)*$/is;
     static stripTags(str: string): string {
-        if (str.search(']') === -1)
-            return str;
-        return str.substring(str.indexOf(']') + 1, str.indexOf('[', str.indexOf(']') + 1));
+        const match = str.match(BuffRepository.tagRegex);
+        if (match && match.groups) {
+            return match.groups.name;
+        }
+        return str;
     }
 
     static getBuffsRaw(): string {

@@ -1,5 +1,5 @@
 <!-- Linebreaks inside this template will break the inline display -->
-<template><span class="job-view" @click="onClick()" @mouseover.prevent="show()" @mouseenter.prevent="show()" @mouseleave.prevent="dismiss()" @click.middle.prevent.stop="toggleStickyness()"  @click.right.passive="dismiss(true)" @click.left.passive="dismiss(true)">{{job.name}}</span></template>
+<template><span class="job-view" :style="underlined ? 'text-decoration: underline;' : ''" @click="onClick()" @mouseover.prevent="show()" @mouseenter.prevent="show()" @mouseleave.prevent="dismiss()" @click.middle.prevent.stop="toggleStickyness()"  @click.right.passive="dismiss(true)" @click.left.passive="dismiss(true)">{{job.name}}</span></template>
 
 
 <script lang="ts">
@@ -21,6 +21,9 @@ export default class JobView extends Vue {
 
     @Prop()
     readonly clickEvent: ((j: StatSheet | Job | Buff) => void) | undefined = undefined;
+
+    @Prop()
+    readonly underlined = false;
 
     @Hook('mounted')
     onMounted(): void {

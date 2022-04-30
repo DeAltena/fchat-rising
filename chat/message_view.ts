@@ -9,9 +9,11 @@ import {Conversation} from './interfaces';
 import UserView from './UserView.vue';
 import {Scoring} from '../learn/matcher-types';
 import ChatMessage = Conversation.ChatMessage;
-import {Buff, Job, JobRepository} from './leveldrain/LevelDrainData';
+import {Buff, BuffRepository, Job, JobRepository} from './leveldrain/LevelDrainData';
 import JobView from './leveldrain/JobView.vue';
+import BuffView from './leveldrain/BuffView.vue';
 import {StatSheet} from './leveldrain/StatSheet';
+import SpoilerElement from './leveldrain/SpoilerElement.vue';
 
 const userPostfix: { [key: number]: string | undefined } = {
     [Conversation.Message.Type.Message]: ': ',
@@ -21,6 +23,71 @@ const userPostfix: { [key: number]: string | undefined } = {
 
 @Component({
     render(this: MessageView, createElement: CreateElement): VNode {
+        function getUnclosedTags(text: string): string {
+            const tags = getOpenedTags(text);
+            const ret: string[] = [];
+
+            tags.forEach((tag) => {
+                const idx = text.lastIndexOf(tag);
+                if (text.indexOf(getClosingTag(tag), idx) === -1) {
+                    ret.push(tag);
+                }
+            });
+
+            return ret.join('');
+        }
+
+        const tagRegex = /(\[[^\/\[]*])/isg;
+
+        function getOpenedTags(text: string): string[] {
+            const ret: string[] = [];
+            let match;
+            while ((match = tagRegex.exec(text)) !== null) {
+                ret.push(match[0]);
+            }
+            return ret;
+        }
+
+        function getClosingTag(tag: string): string {
+            if (tag.startsWith('[color='))
+                return '[/color]';
+            return `[/${tag.substring(1)}`;
+        }
+
+        function getBuffsFromString(str: string, sep: string): Buff[] {
+            const ret: Buff[] = [];
+            if(sep === '') {
+                const b = BuffRepository.getInstance().getBuff(str);
+                if(b)
+                    ret.push(b);
+            } else {
+                const arr = str.trim().split(sep);
+                arr.forEach((s) => {
+                    const b = BuffRepository.getInstance().getBuff(s);
+                    if(b)
+                        ret.push(b);
+                });
+            }
+            return ret;
+        }
+
+        function getJobsFromString(str: string, sep: string): Job[] {
+            const ret: Job[] = [];
+            if(sep === '') {
+                const j = JobRepository.getInstance().getJob(str);
+                if(j)
+                    ret.push(j);
+            } else {
+                const arr = str.trim().split(sep);
+                arr.forEach((s) => {
+                    const j = JobRepository.getInstance().getJob(s);
+                    if(j)
+                        ret.push(j);
+                });
+            }
+            return ret;
+        }
+
         const message = this.message;
 
         // setTimeout(
@@ -49,13 +116,20 @@ const userPostfix: { [key: number]: string | undefined } = {
             if (message.isHighlight) classes += ' message-highlight';
         }
 
-        const replacements = [/(\[b\]level drain stat sheet\[\/b\].*?\D*\d* )(?<job>[^ ]*)(.*)/is, //Stat Sheet
-            /^(.*class is now.*?\])(?<job>[^\[]*)(.*)$/is, //Class Change Result + Dungeon Force Change
-            /^(.*you have.*?unlocked.*?\] )(?<job>[^\[]*)(.*)$/is, //Dungeon Unlock
-            /^(.*is registered as a.*?Level.*\] )(?<job>[^.]*)(.*)$/is, //!check result
+        const replacements = [
+            /(\[b]level drain stat sheet\[\/b].*?\D*\d* )(?<job>[^\[]*)( \[.*?color=white]\[b])(?:(Status Conditions[^\r\n]*[\r\n]+\[b]\t)(?<boldbuffs>\[color=[^\]]*][^\[]*\[\/color](?<sep> \| )?[^\r\n]*)|(Stats))(\[\/b].*)$/is, //Stat Sheet
+            /^(.*class is now.*?])(?<job>[^\[]*)(.*)$/is, //Class Change Result + Dungeon Force Change
+            /^(.*you have.*?unlocked.*?] )(?<job>[^\[]*)(.*)$/is, //Dungeon Unlock
+            /(^.*you were inflicted with \[b])(?<boldbuff>[^[]*)(\[\/b]!.*)$/is, //Grind Result
+            /^(.*is registered as a.*?Level.*] )(?<job>[^.]*)(\. status effects: )?(?<buffs>\[color=[^\]]*][^\[]*\[\/color](?<sep>, )?[^.]*)?(.)$/is, //!check result
             /^(.*class-change .*? into )(?<job>[^!]*)(.*)$/is, //Class Change Request
-            /^(\[u])(?<job>[^\[]*)(\[\/u]\t \[sub].*?Converts: )(?<subjob>[^\[]*)(.*)/is //!jobinfo result
+            /^(.*?is attempting to.*inflict \[b])(?<boldbuff>[^!]*)(\[\/b]!.*)$/is, //Inflict Request
+            /^( ?Drain successful!.*got the status condition \[b])(?<boldbuff>[^!]*)(\[\/b]! ?)$/is, //Inflict Result
+            /^(status conditions )(?<job>.*?)( may inflict: ?[\r\n]+)(?<boldbuffs>\[b]\[color=[^\]]*][^\[]*\[\/color]\[\/b](?<sep> ).*)?$/is, //inflict
+            /^(\[b]\[color=[^\]]*])(?<boldbuff>[^[]*)(.*?\[sup]From: )(?<supjobs>[^,]*(?<sep>, )[^[]*)(.*)$/is, //inflict to bot
+            /^(\[u])(?<job>[^\[]*)(\[\/u]\t \[sub]\[b](?:\t \[color=[^\]]*][^\[]*\[\/color])*)(?:(\t converts: )(?<subjob>[^\[]*))?(\[\/b]\[\/sub].*?Innate: )(?<innate>[^\r\n]*)(.*?buffs\/debuffs:\[sub]  )(?<subbuffs>\[color=[^\]]*][^\[]*\[\/color](?<sep>  )?.*)(\[\/sub])$/is //!jobinfo result
         ];
+        const historyRegex = /^(?<first>Levels:[\r\n]+)(?<historylist>.*?[\n])(?<second>[\r\n]+Total Levels:)\[spoiler][\r\n]+(?<spoilerlist>[^\[]*)(?<third>\[\/spoiler])$/is;
         const fromStatTrack = message.type === Conversation.Message.Type.Message && (message as ChatMessage).sender?.name === 'StatTrack';
         let foundReplacement = false;
         let closingTags = '';
@@ -65,40 +139,157 @@ const userPostfix: { [key: number]: string | undefined } = {
                 if (match) {
                     const groups = match.groups;
                     match.forEach((m) => {
-                        if (m === message.text)
+                        if (!m || m === match[0] || m.trim() === '' || (groups && m === groups.sep) || m.trim() === message?.text.trim())
                             return;
-
+                        foundReplacement = false;
+    
                         if (m === groups?.job || m === groups?.subjob) {
-                            const j = JobRepository.getInstance().getJob(groups.job);
+                            const j = JobRepository.getInstance().getJob(m);
                             if (j) {
+                                foundReplacement = true;
                                 let vnode: VNode;
-                                if(m === groups?.subjob) {
-                                    let subnode = createElement(JobView,
-                                        {props: {job: j, clickEvent: this.clickEvent}});
+                                if (m === groups?.subjob) {
+                                    const subnode = createElement(JobView,
+                                        {props: {job: j, underlined: true, clickEvent: this.clickEvent}});
                                     vnode = createElement('sub', {}, [subnode]);
                                 } else {
                                     vnode = createElement(JobView,
-                                        {props: {job: j, clickEvent: this.clickEvent}});
+                                        {props: {job: j, underlined: true, clickEvent: this.clickEvent}});
                                 }
                                 children.push(vnode);
                             } else {
-                                m = closingTags + m;
-                                children.push(createElement(BBCodeView(core.bbCodeParser),
-                                    {props: {unsafeText: m}}));
-                                closingTags = MessageView.getUnclosedTags(m);
+                                foundReplacement = false;
                             }
-                        } else {
+                        } else if(m === groups?.supjobs) {
+                            const sep = groups?.sep;
+                            let tag = '';
+                            switch (m) {
+                                case groups?.supjobs:
+                                    tag = 'sup';
+                                    break;
+                            }
+
+                            const jbs = getJobsFromString(m, sep);
+                            if(jbs.length > 0) {
+                                sep.replace(' ', '&nbsp;');
+                                foundReplacement = true;
+                                let subnodes: VNode[] = [];
+                                jbs.forEach((j) => {
+                                    subnodes.push(createElement(JobView,
+                                        {props: {job: j, underlined: true, clickEvent: this.clickEvent}}));
+                                    if(j !== jbs[jbs.length - 1]) {
+                                        subnodes.push(createElement('span', sep));
+                                    }
+                                });
+                                if(tag !== '')
+                                    children.push(createElement(tag, {}, subnodes));
+                                else
+                                    children.push(subnodes);
+                            } else {
+                                foundReplacement = false;
+                            }
+                        } else if(m === groups?.innate || m === groups?.boldbuff) {
+                            const b = BuffRepository.getInstance().getBuff(m);
+                            let col = false;
+                            if(m === groups?.boldbuff)
+                                col = true;
+                            if(b) {
+                                foundReplacement = true;
+                                if(m === groups?.boldbuff) {
+                                    children.push(createElement('strong', {}, [createElement(BuffView,
+                                        {props: {buff: b, coloured: col, clickEvent: this.clickEvent}})]));
+                                } else {
+                                    children.push(createElement(BuffView,
+                                        {props: {buff: b, coloured: col, clickEvent: this.clickEvent}}));
+                                }
+                            } else {
+                                foundReplacement = false;
+                            }
+                        } else if(m === groups?.buffs || m === groups?.subbuffs || m === groups?.boldbuffs) {
+                            const sep = groups?.sep;
+                            let tag = '';
+                            switch (m) {
+                                case groups?.buffs:
+                                    tag = '';
+                                    break;
+                                case groups?.subbuffs:
+                                    tag = 'sub';
+                                    break;
+                                case groups?.boldbuffs:
+                                    tag = 'strong';
+                                    break;
+                            }
+
+                            const bfs = getBuffsFromString(m, sep);
+                            if(bfs.length > 0) {
+                                sep.replace(' ', '&nbsp;');
+                                foundReplacement = true;
+                                let subnodes: VNode[] = [];
+                                bfs.forEach((b) => {
+                                    subnodes.push(createElement(BuffView,
+                                        {props: {buff: b, coloured: true, clickEvent: this.clickEvent}}));
+                                    if(b !== bfs[bfs.length - 1]) {
+                                        subnodes.push(createElement('span', sep));
+                                    }
+                                });
+                                if(tag !== '')
+                                    children.push(createElement(tag, {}, subnodes));
+                                else
+                                    children.push(subnodes);
+                            } else {
+                                foundReplacement = false;
+                            }
+                        }
+
+                        if(!foundReplacement) {
+                            foundReplacement = true;
                             m = closingTags + m;
                             children.push(createElement(BBCodeView(core.bbCodeParser),
                                 {props: {unsafeText: m}}));
-                            closingTags = MessageView.getUnclosedTags(m);
+                            closingTags = getUnclosedTags(m);
                         }
                     });
-                    foundReplacement = true;
                     return false;
                 }
                 return true;
             });
+            if(!foundReplacement){
+                const historyGroups = message?.text.match(historyRegex)?.groups;
+                if (historyGroups) {
+                    foundReplacement = true;
+                    const jobscan = /^(?<job>[^:]*)(?<trail>:\t\d+[^\[\r\n]*)/igm;
+                    children.push(createElement('span', historyGroups.first));
+                    children.push(createElement('br'));
+
+                    let match;
+                    while ((match = jobscan.exec(historyGroups.historylist)) !== null) {
+                        const j = JobRepository.getInstance().getJob(match.groups?.job);
+                        if(j) {
+                            children.push(createElement(JobView,
+                                {props: {job: j, underlined: true, clickEvent: this.clickEvent}}));
+                            children.push(createElement('span', match.groups?.trail));
+                            children.push(createElement('br'));
+                        } else {
+                            children.push(createElement('span', match[0]));
+                            children.push(createElement('br'));
+                        }
+                    }
+
+                    children.push(createElement('br'));
+                    children.push(createElement('span', historyGroups.second));
+                    children.push(createElement('br'));
+                    const jobs: [Job, string][] = [];
+                    jobscan.lastIndex = 0;
+                    while ((match = jobscan.exec(historyGroups.spoilerlist)) !== null) {
+                        const j = JobRepository.getInstance().getJob(match.groups?.job);
+                        if(j) {
+                            jobs.push([j, match.groups?.trail as string]);
+                        }
+                    }
+                    children.push(createElement(SpoilerElement,
+                        {props: {jobs: jobs, clickEvent: this.clickEvent}}));
+                }
+            }
         }
 
 
@@ -113,7 +304,7 @@ const userPostfix: { [key: number]: string | undefined } = {
                                 if (elm.scrollHeight > elm.offsetHeight) {
                                     const expand = document.createElement('div');
                                     expand.className = 'expand fas fa-caret-down';
-                                    expand.addEventListener('click', function (): void {
+                                    expand.addEventListener('click', function(): void {
                                         this.parentElement!.className += ' expanded';
                                     });
                                     elm.appendChild(expand);
@@ -194,35 +385,5 @@ export default class MessageView extends Vue {
         }
 
         return 'filter-match';
-    }
-
-    static getUnclosedTags(text: string): string {
-        const tags = MessageView.getOpenedTags(text);
-        const ret: string[] = [];
-
-        tags.forEach((tag) => {
-            const idx = text.lastIndexOf(tag);
-            if(text.indexOf(MessageView.getClosingTag(tag), idx) === -1) {
-                ret.push(tag);
-            }
-        });
-
-        return ret.join();
-    }
-
-    static tagRegex = /(\[[^\/\[]*])/isg;
-    static getOpenedTags(text: string): string[] {
-        const ret: string[] = [];
-        let match;
-        while ((match = MessageView.tagRegex.exec(text)) !== null) {
-            ret.push(match[0]);
-        }
-        return ret;
-    }
-
-    static getClosingTag(tag: string): string {
-        if(tag.startsWith('[color='))
-            return '[/color]';
-        return `[/${tag.substring(1)}`;
     }
 }

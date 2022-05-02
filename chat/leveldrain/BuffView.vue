@@ -5,7 +5,7 @@
 <script lang="ts">
 import { Component, Hook, Prop } from '@f-list/vue-ts';
 import Vue from 'vue';
-import {Buff, Job} from "./LevelDrainData";
+import {Buff, Job, Tag} from './LevelDrainData';
 import {EventBus} from "../preview/event-bus";
 import {StatSheet} from "./StatSheet";
 
@@ -23,7 +23,7 @@ export default class BuffView extends Vue {
     readonly coloured = true;
 
     @Prop()
-    readonly clickEvent: ((j: StatSheet | Job | Buff) => void) | undefined = undefined;
+    readonly clickEvent: ((j: StatSheet | Job | Buff | Tag) => void) | undefined = undefined;
 
     @Hook('mounted')
     onMounted(): void {

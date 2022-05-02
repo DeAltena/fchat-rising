@@ -11,7 +11,7 @@
 
 <script lang="ts">
 import {Component, Prop} from '@f-list/vue-ts';
-import {Buff, Job} from './LevelDrainData';
+import {Buff, Job, Tag} from './LevelDrainData';
 import JobView from './JobView.vue';
 import {StatSheet} from './StatSheet';
 import Vue from 'vue';
@@ -25,7 +25,7 @@ export default class SpoilerElement extends Vue {
   @Prop({required: true})
   jobs!: [Job, string][];
   @Prop()
-  readonly clickEvent: ((j: StatSheet | Job | Buff) => void) | undefined = undefined;
+  readonly clickEvent: ((j: StatSheet | Job | Buff | Tag) => void) | undefined = undefined;
 
   hidden = true;
 

@@ -9,7 +9,7 @@ import {Conversation} from './interfaces';
 import UserView from './UserView.vue';
 import {Scoring} from '../learn/matcher-types';
 import ChatMessage = Conversation.ChatMessage;
-import {Buff, BuffRepository, Job, JobRepository} from './leveldrain/LevelDrainData';
+import {Buff, BuffRepository, Job, JobRepository, Tag} from './leveldrain/LevelDrainData';
 import JobView from './leveldrain/JobView.vue';
 import BuffView from './leveldrain/BuffView.vue';
 import {StatSheet} from './leveldrain/StatSheet';
@@ -120,13 +120,14 @@ const userPostfix: { [key: number]: string | undefined } = {
             /(\[b]level drain stat sheet\[\/b].*?\D*\d* )(?<job>[^\[]*)( \[.*?color=white]\[b])(?:(Status Conditions[^\r\n]*[\r\n]+\[b]\t)(?<boldbuffs>\[color=[^\]]*][^\[]*\[\/color](?<sep> \| )?[^\r\n]*)|(Stats))(\[\/b].*)$/is, //Stat Sheet
             /^(.*class is now.*?])(?<job>[^\[]*)(.*)$/is, //Class Change Result + Dungeon Force Change
             /^(.*you have.*?unlocked.*?] )(?<job>[^\[]*)(.*)$/is, //Dungeon Unlock
+            /^(.*you are now affected by \[b]\[color=[^\]]*])(?<boldbuff>[^[]*)(.*)$/is, //Dungeon inflict
             /(^.*you were inflicted with \[b])(?<boldbuff>[^[]*)(\[\/b]!.*)$/is, //Grind Result
             /^(.*is registered as a.*?Level.*] )(?<job>[^.]*)(\. status effects: )?(?<buffs>\[color=[^\]]*][^\[]*\[\/color](?<sep>, )?[^.]*)?(.)$/is, //!check result
             /^(.*class-change .*? into )(?<job>[^!]*)(.*)$/is, //Class Change Request
             /^(.*?is attempting to.*inflict \[b])(?<boldbuff>[^!]*)(\[\/b]!.*)$/is, //Inflict Request
             /^( ?Drain successful!.*got the status condition \[b])(?<boldbuff>[^!]*)(\[\/b]! ?)$/is, //Inflict Result
             /^(status conditions )(?<job>.*?)( may inflict: ?[\r\n]+)(?<boldbuffs>\[b]\[color=[^\]]*][^\[]*\[\/color]\[\/b](?<sep> ).*)?$/is, //inflict
-            /^(\[b]\[color=[^\]]*])(?<boldbuff>[^[]*)(.*?\[sup]From: )(?<supjobs>[^,]*(?<sep>, )[^[]*)(.*)$/is, //inflict to bot
+            /^(\[b]\[color=[^\]]*])(?<boldbuff>[^[]*)(.*?\[sup]From: )(?<supjobs>[^,]*(?<sep>, )[^[]*)?(.*)$/is, //inflict to bot
             /^(\[u])(?<job>[^\[]*)(\[\/u]\t \[sub]\[b](?:\t \[color=[^\]]*][^\[]*\[\/color])*)(?:(\t converts: )(?<subjob>[^\[]*))?(\[\/b]\[\/sub].*?Innate: )(?<innate>[^\r\n]*)(.*?buffs\/debuffs:\[sub]  )(?<subbuffs>\[color=[^\]]*][^\[]*\[\/color](?<sep>  )?.*)(\[\/sub])$/is //!jobinfo result
         ];
         const historyRegex = /^(?<first>Levels:[\r\n]+)(?<historylist>.*?[\n])(?<second>[\r\n]+Total Levels:)\[spoiler][\r\n]+(?<spoilerlist>[^\[]*)(?<third>\[\/spoiler])$/is;
@@ -142,7 +143,7 @@ const userPostfix: { [key: number]: string | undefined } = {
                         if (!m || m === match[0] || m.trim() === '' || (groups && m === groups.sep) || m.trim() === message?.text.trim())
                             return;
                         foundReplacement = false;
-    
+
                         if (m === groups?.job || m === groups?.subjob) {
                             const j = JobRepository.getInstance().getJob(m);
                             if (j) {
@@ -329,7 +330,7 @@ export default class MessageView extends Vue {
     @Prop
     readonly logs?: true;
     @Prop()
-    readonly clickEvent: ((j: StatSheet | Job | Buff) => void) | undefined = undefined;
+    readonly clickEvent: ((j: StatSheet | Job | Buff | Tag) => void) | undefined = undefined;
 
     scoreClasses = this.getMessageScoreClasses(this.message);
     filterClasses = this.getMessageFilterClasses(this.message);

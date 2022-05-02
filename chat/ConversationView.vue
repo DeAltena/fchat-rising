@@ -258,7 +258,7 @@ import * as _ from 'lodash';
 import Dropdown from '../components/Dropdown.vue';
 import log from 'electron-log';
 import {FunStat, Stats, StatSheet} from "./leveldrain/StatSheet";
-import {Buff, BuffRepository, Job, JobRepository} from "./leveldrain/LevelDrainData";
+import {Buff, BuffRepository, Job, JobRepository, Tag} from './leveldrain/LevelDrainData';
 import JobView from "./leveldrain/JobView.vue";
 import StatSheetView from './leveldrain/StatSheetView.vue'
 
@@ -315,7 +315,7 @@ export default class ConversationView extends Vue {
     isPrivate = Conversation.isPrivate;
     showNonMatchingAds = true;
     statSheet: StatSheet | null = null;
-    statViewData: StatSheet | Job | Buff | null = null;
+    statViewData: StatSheet | Job | Buff | Tag | null = null;
 
     @Hook('beforeMount')
     async onBeforeMount(): Promise<void> {
@@ -852,7 +852,7 @@ export default class ConversationView extends Vue {
         this.view = false;
     }
 
-    showStatView(data: StatSheet | Job | Buff): void {
+    showStatView(data: StatSheet | Job | Buff | Tag): void {
         this.statViewData = data;
         (<StatSheetView>this.$refs['statView']).show();
     }

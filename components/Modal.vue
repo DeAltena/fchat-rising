@@ -7,6 +7,8 @@
                         <h4 class="modal-title">
                             <slot name="title">{{action}}</slot>
                         </h4>
+                        <button v-if="back" type="button" class="close" :class="(isBackEnabled && isBackEnabled()) ? '' : 'disabled'" @click="back" aria-label="Back">&larr;</button>
+                        <button v-if="forward" type="button" class="close" :class="(isForwardEnabled && isForwardEnabled()) ? '' : 'disabled'" @click="forward" aria-label="Forward">&rarr;</button>
                         <button type="button" class="close" @click="hide" aria-label="Close" v-show="!keepOpen">&times;</button>
                     </div>
                     <div class="modal-body" style="overflow:auto;-webkit-overflow-scrolling:auto" tabindex="-1">
@@ -61,6 +63,14 @@
         readonly showCancel!: boolean;
         @Prop
         readonly buttonText?: string;
+        @Prop
+        back: (() => void) | undefined = undefined;
+        @Prop
+        isBackEnabled: (() => boolean) | undefined = undefined;
+        @Prop
+        forward: (() => void) | undefined = undefined;
+        @Prop
+        isForwardEnabled: (() => boolean) | undefined = undefined;
         isShown = false;
         keepOpen = false;
 
@@ -102,6 +112,18 @@
 </script>
 
 <style>
+    .modal-title {
+        margin-right: auto !important;
+    }
+
+    .modal-header .close {
+        margin: -1rem -1rem -1rem 1rem !important;
+    }
+
+    button.close.disabled {
+        opacity: 0.1 !important;
+        cursor: not-allowed !important;
+    }
     .flex-modal .modal-body > .form-group {
         margin-left: 0;
         margin-right: 0;

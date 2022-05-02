@@ -35,7 +35,7 @@
             class="character-preview"
             :style="previewStyles.CharacterPreviewHelper"
             ref="characterPreview"
-        ></character-preview>
+            ></character-preview>
 
         <job-preview
             class="job-preview"
@@ -48,6 +48,12 @@
             :style="previewStyles.BuffPreviewHelper"
             ref="buffPreview"
             ></buff-preview>
+
+        <tag-preview
+            class="tag-preview"
+            :style="previewStyles.TagPreviewHelper"
+            ref="tagPreview"
+            ></tag-preview>
 
         <i id="preview-spinner" class="fas fa-circle-notch fa-spin" v-show="shouldShowSpinner"></i>
         <i id="preview-error" class="fas fa-times" v-show="shouldShowError"></i>
@@ -64,6 +70,7 @@
     import {ImageDomMutator} from './image-dom-mutator';
     import JobPreview from '../leveldrain/JobPreview.vue';
     import BuffPreview from '../leveldrain/BuffPreview.vue';
+    import TagPreview from '../leveldrain/TagPreview.vue';
 
     import {
       ExternalImagePreviewHelper,
@@ -80,6 +87,7 @@
     import CharacterPreview from './CharacterPreview.vue';
     import {JobPreviewHelper} from "../leveldrain/JobPreviewHelper";
     import {BuffPreviewHelper} from "../leveldrain/BuffPreviewHelper";
+    import {TagPreviewHelper} from '../leveldrain/TagPreviewHelper';
 
     const screen = remote.screen;
 
@@ -99,7 +107,8 @@
         components: {
             'character-preview': CharacterPreview,
             'job-preview': JobPreview,
-            'buff-preview': BuffPreview
+            'buff-preview': BuffPreview,
+            'tag-preview': TagPreview
         }
     })
     export default class ImagePreview extends Vue {
@@ -114,7 +123,8 @@
             new LocalImagePreviewHelper(this),
             new CharacterPreviewHelper(this),
             new JobPreviewHelper(this),
-            new BuffPreviewHelper(this)
+            new BuffPreviewHelper(this),
+            new TagPreviewHelper(this)
             // new ChannelPreviewHelper(this)
           ]
         );
@@ -649,6 +659,10 @@
             return this.$refs.buffPreview as BuffPreview;
         }
 
+        getTagPreview(): TagPreview {
+            return this.$refs.tagPreview as TagPreview;
+        }
+
         reset(): void {
             this.previewManager = new PreviewManager(
               this,
@@ -657,7 +671,8 @@
                 new LocalImagePreviewHelper(this),
                 new CharacterPreviewHelper(this),
                 new JobPreviewHelper(this),
-                new BuffPreviewHelper(this)
+                new BuffPreviewHelper(this),
+                new TagPreviewHelper(this)
                 // new ChannelPreviewHelper(this)
               ]
             );

@@ -1,6 +1,23 @@
 import log from "electron-log";
 import {parseInt} from "lodash";
 
+export class DrainDataUtil {
+    static readonly colourRegex = /\[color=(?<col>[^\]]*)]/i;
+    static scanColour(name: string): string {
+        const colour = name.match(DrainDataUtil.colourRegex)?.groups?.col;
+        return !colour ? '' : colour;
+    }
+
+    static readonly tagRegex = /^(?:\s*\[.*?\])*(?<name>[^\][]*)(?:\[.*?\]\s*)*$/is;
+    static stripTags(str: string): string {
+        const match = str.match(DrainDataUtil.tagRegex);
+        if (match && match.groups) {
+            return match.groups.name;
+        }
+        return str;
+    }
+}
+
 export class Buff {
     name: string;
     cost: number;
@@ -14,17 +31,11 @@ export class Buff {
         this.cost = cost;
         this.desc = desc;
         this.from = from;
-        this.scanColour(name);
-    }
-
-    readonly colourRegex = /\[color=(?<col>[^\]]*)\]/i;
-    private scanColour(name: string): void {
-        const colour = name.match(this.colourRegex)?.groups?.col;
-        this.colour = !colour ? '' : colour;
+        this.colour = DrainDataUtil.scanColour(name);
     }
 
     taglessName(): string {
-        return BuffRepository.stripTags(this.name);
+        return DrainDataUtil.stripTags(this.name);
     }
 
     underlinedName(): string {
@@ -72,7 +83,7 @@ export class BuffRepository {
 
     getBuff(name: string): Buff | null {
         try {
-            return this.buffs[BuffRepository.stripTags(name.trim()).toLowerCase()];
+            return this.buffs[DrainDataUtil.stripTags(name.trim()).toLowerCase()];
         } catch (err) {
             log.error(name, err);
             return null;
@@ -85,18 +96,18 @@ export class BuffRepository {
         try {
             let match;
             while ((match = this.buffRegex.exec(buffs)) !== null) {
-                let groups = match.groups;
+                const groups = match.groups;
                 if (!groups) {
                     log.error('Error parsing buffs from ', buffs, this.buffs);
                     return;
                 }
-                let buffName = groups.name;
-                let key = BuffRepository.stripTags(buffName).toLowerCase();
+                const buffName = groups.name;
+                const key = DrainDataUtil.stripTags(buffName).toLowerCase();
                 let buffCost = parseInt(groups.cost);
                 if (isNaN(buffCost))
                     buffCost = 0;
-                let buffDesc = groups.desc;
-                let buffFrom = groups.from.split(',');
+                const buffDesc = groups.desc;
+                const buffFrom = groups.from.split(',');
                 buffFrom.map((val) => val.trim());
                 this.buffs[key] = new Buff(
                     buffName, buffCost, buffDesc, buffFrom
@@ -117,15 +128,6 @@ export class BuffRepository {
                 }
             });
         }
-    }
-
-    static readonly tagRegex = /^(?:\s*\[.*?\])*(?<name>[^\][]*)(?:\[.*?\]\s*)*$/is;
-    static stripTags(str: string): string {
-        const match = str.match(BuffRepository.tagRegex);
-        if (match && match.groups) {
-            return match.groups.name;
-        }
-        return str;
     }
 
     static getBuffsRaw(): string {
@@ -458,14 +460,14 @@ export class BuffRepository {
 export class Job {
     name: string;
     desc: string;
-    tags: string[];
+    tags: Tag[];
     convert: string;
     convertJob: Job | null = null;
     scaling: string;
     innate: Buff | null;
     buffs: Buff[];
 
-    constructor(name: string, desc: string, tags: string[], convert: string, scaling: string, innate: Buff | null, buffs: Buff[]) {
+    constructor(name: string, desc: string, tags: Tag[], convert: string, scaling: string, innate: Buff | null, buffs: Buff[]) {
         this.name = name;
         this.desc = desc;
         this.tags = tags;
@@ -476,13 +478,13 @@ export class Job {
     }
 
     getTagString(): string {
-        let tmp: string[] = [];
-        this.tags.forEach((tag) => tmp.push(tag.replace('\t', '')));
+        const tmp: string[] = [];
+        this.tags.forEach((tag) => tmp.push(tag.name));
         return `${tmp.join('  ')}`;
     }
 
     getBuffsString(): string {
-        let tmp: string[] = [];
+        const tmp: string[] = [];
         this.buffs.forEach((buff) => tmp.push(buff.name));
         return tmp.join(', ');
     }
@@ -532,8 +534,13 @@ export class JobRepository {
                     return;
                 }
                 const jobName = jobGroups.jobname;
-                const jobTags = jobGroups.jobtags.trim().split(' ');
-                jobTags.map((val) => val.trim().replace('\t', ''));
+                const jt = jobGroups.jobtags.trim().split(' ');
+                const jobTags: Tag[] = [];
+                jt.forEach((t) => {
+                    let tag = TagRepository.getInstance().getTag(t);
+                    if (tag)
+                        jobTags.push(tag as Tag);
+                });
                 const convert = jobGroups.converts;
                 const jobDesc = jobGroups.jobdesc;
                 const scaling = jobGroups.scaling;
@@ -1594,5 +1601,113 @@ Buffs/Debuffs:[sub] N/A[/sub]
 I like the smell of napalm in the morning. It smells like...victory.
 STR [color=green] ++[/color] | VIT [color=green] ++[/color] | DEX [color=green] +·[/color] | INT [color=green] ++·[/color] | CHA [color=green] +·[/color] | LUC [color=green] +·[/color] | Innate: Mastery
 Buffs/Debuffs:[sub]  [color=cyan]Berserk[/color]  [color=pink]Boring[/color]  [color=yellow]Crushed[/color]  [color=pink]Daring[/color]  [color=orange]Disarmed[/color]  [color=white]First-Aid[/color]  [color=white]Irradiated[/color]  [color=yellow]Overheated[/color]  [color=yellow]Pulverized[/color]  [color=white]Questing[/color]  [color=white]Reinforced[/color]  [color=cyan]Vicious[/color][/sub]`;
+    }
+}
+
+export class Tag {
+    name: string;
+    features: string[];
+    colour: string;
+
+    constructor(name: string, features: string[]) {
+        this.name = name;
+        this.features = features;
+        this.colour = DrainDataUtil.scanColour(name);
+    }
+
+    getTaglessName(): string {
+        return DrainDataUtil.stripTags(this.name);
+    }
+
+    getClass(): string {
+        return `${this.colour}Text`;
+    }
+}
+
+export class TagRepository {
+    tags: { [name: string]: Tag } = {};
+    private static instance: TagRepository;
+
+    private constructor() {
+        this.tags['seducer'] = new Tag(
+            '[color=pink]Seducer[/color]',
+            [
+                '[b]+[/b] [color=pink]CHA[/color]-based bonus to drain success'
+            ]
+        );
+        this.tags['finesse'] = new Tag(
+            '[color=blue]Finesse[/color]',
+            [
+                '[b]+[/b] can drain using [color=red]DEX[/color]'
+            ]
+        );
+        this.tags['drainer'] = new Tag(
+            '[color=purple]Drainer[/color]',
+            [
+                '[b]+[/b] faster drains',
+                '[b]+[/b] higher drain cap',
+                '[b]-[/b] slower grinds'
+            ]
+        );
+        this.tags['grinder'] = new Tag(
+            '[color=yellow]Grinder[/color]',
+            [
+                '[b]+[/b] faster grinds',
+                '[b]-[/b] slower drains'
+            ]
+        );
+        this.tags['support'] = new Tag(
+            '[color=white]Support[/color]',
+            [
+                '[b]+[/b] no levels/stats siphoned when bestowing status conditions'
+            ]
+        );
+        this.tags['adventurer'] = new Tag(
+            '[color=green]Adventurer[/color]',
+            [
+                '[b]+[/b] faster exploration charges',
+                '[b]+[/b] bonus to drain resist against monsters',
+                '[b]-[/b] slower drains and lower drain cap'
+            ]
+        );
+        this.tags['monster'] = new Tag(
+            '[color=orange]Monster[/color]',
+            [
+                '[b]+[/b] [color=white]level[/color]-based bonus to drain success',
+                '[b]+[/b] higher drain cap',
+                '[b]-[/b] [color=green]Adventurers[/color] get a resist bonus'
+            ]
+        );
+        this.tags['unholy'] = new Tag(
+            '[color=red]Unholy[/color]',
+            [
+                '[b]+[/b] [color=pink]CHA[/color]-based bonus to drain success',
+                '[b]+[/b] [color=cyan]Holy[/color] lose their divine intervention',
+                '[b]-[/b] [color=green]Adventurers[/color] get a resist bonus'
+            ]
+        );
+        this.tags['holy'] = new Tag(
+            '[color=cyan]Holy[/color]',
+            [
+                '[b]+[/b] [color=green]LUC[/color]-based bonus to drain resist',
+                '[b]+[/b] doubled chance of divine intervention',
+                '[b]-[/b] no divine intervention against [color=red]Unholy[/color]'
+            ]
+        );
+    }
+
+    static getInstance(): TagRepository {
+        if (!TagRepository.instance)
+            TagRepository.instance = new TagRepository();
+        return TagRepository.instance;
+    }
+
+    getTag(name: string): Tag | null {
+        try {
+            return this.tags[DrainDataUtil.stripTags(name.trim().replace('\t', '')).toLowerCase()];
+        } catch (err) {
+            log.error(name, err);
+            return null;
+        }
     }
 }

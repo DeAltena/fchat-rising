@@ -14,5 +14,8 @@
     "startDebugMain": "export ELECTRON_ENABLE_LOGGING=1 && ../node_modules/.bin/electron  --serve --inspect-brk=9229 app",
     "startDebugRender": "export ELECTRON_ENABLE_LOGGING=1 && ../node_modules/.bin/electron --remote-debugging-port=9229 app",
     "pack": "node ./pack"
+  },
+  "dependencies": {
+    "vue-clickaway": "^2.2.2"
   }
 }

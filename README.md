@@ -1,13 +1,52 @@
 # Download
-[Windows](https://github.com/mrstallion/fchat-rising/releases/download/v1.18.1/F-Chat-Rising-1.18.1-win.exe) (82 MB)
-| [MacOS Intel](https://github.com/mrstallion/fchat-rising/releases/download/v1.18.1/F-Chat-Rising-1.18.1-macos-intel.dmg) (82 MB)
-| [MacOS M1](https://github.com/mrstallion/fchat-rising/releases/download/v1.18.1/F-Chat-Rising-1.18.1-macos-m1.dmg) (84 MB)
-| [Linux](https://github.com/mrstallion/fchat-rising/releases/download/v1.18.1/F-Chat-Rising-1.18.1-linux.AppImage) (82 MB)
+[Windows](https://github.com/mrstallion/fchat-rising/releases/download/v1.23.5/F-Chat-Rising-1.23.5-win.exe) (82 MB)
+| [MacOS Intel](https://github.com/mrstallion/fchat-rising/releases/download/v1.23.5/F-Chat-Rising-1.23.5-macos-intel.dmg) (82 MB)
+| [MacOS M1](https://github.com/mrstallion/fchat-rising/releases/download/v1.23.5/F-Chat-Rising-1.23.5-macos-m1.dmg) (84 MB)
+| [Linux](https://github.com/mrstallion/fchat-rising/releases/download/v1.23.5/F-Chat-Rising-1.23.5-linux.AppImage) (82 MB)
 
 
 # F-Chat Rising
-
 This repository contains a heavily customized version of the mainline F-Chat 3.0 client.
+
+## TL;DR
+
+### Setting Up
+```bash
+# Windows only
+npm install --global --production --vs2015 --add-python-to-path windows-build-tools node-gyp
+
+# All operating systems
+git clone https://github.com/mrstallion/fchat-rising.git
+cd fchat-rising
+yarn
+
+# Optional; make sure your commits are anonymous
+git config --local user.name "SOME NAME"
+git config --local user.email "some@email.com"
+```
+
+### Dev Mode
+Run two processes simultaneously:
+
+```bash
+# Process 1 -- watch
+cd electron
+yarn watch
+```
+
+```bash
+# Process 2 -- app
+cd electron
+yarn start
+# Use `Ctrl+Shift+I` to open the Chromium debugger.
+```
+
+### Build
+```bash
+cd electron
+yarn build:dist
+node pack.js
+```
 
 
 ## Key Differences
@@ -32,6 +71,7 @@ This repository contains a heavily customized version of the mainline F-Chat 3.0
     *    LFP ads are automatically rated (great/good/maybe/no) and matched against your profile
 *   Private Conversations
     *    View a characters' recent ads
+    *    Quick prof  
 *   Link Previews
     *    Hover cursor over any `[url]` to see a preview of it
     *    Hover cursor over any character name to see a preview of the character
@@ -52,6 +92,7 @@ This repository contains a heavily customized version of the mainline F-Chat 3.0
     *    Character view tabs (overview, images, etc.) stick to the top 
     *    Show/hide current profile with Ctrl+P or Command+P
     *    Navigate back and forward in character profile view history
+    *    Profile Analyzer guides you to adjust your profile to maximize matches
 *   Character Search
     *    Search results are sorted based on match scores
     *    Best matching profiles get a 'unicorn' tag
@@ -77,7 +118,7 @@ This repository contains a heavily customized version of the mainline F-Chat 3.0
     *    Option to disable Windows high contrast mode
     *    Right click any word and select 'Look up...' to see its dictionary definition
 *   Technical Details for Nerds
-    *    Upgraded to Electron 10.x
+    *    Upgraded to Electron 17.x
     *    Replaced `node-spellchecker` with the built-in spellchecker that ships with Electron 8+
     *    Multi-language support for spell checking (Windows only – language is autodetected on MacOS) 
 
@@ -85,12 +126,12 @@ This repository contains a heavily customized version of the mainline F-Chat 3.0
 ## How to Set Up Ads
 
 1. Open a conversation channel of your preference, such as `#Sex Driven LFRP`
-1. Locate `Ads` dropdown at the top right corner of the channel view
-1. Click `Ads > Edit Channel Ads...`
-1. Enter one or more ads
-1. Click `Save settings`
-1. Click `Ads > Start Posting Ads`
-1. To stop, click `Ads > Stop Posting Ads`
+1. Locate the `Ad Editor` button underneath your character overview on the left.
+1. Enter one or more ads and tag them appropriately
+1. Click `Save`
+1. Click the `Post Ads` underneath the `Ad Editor` option.
+1. Select the tags you wish to use and which channel to post them in and then click `Start Posting Ads` on the bottom.
+1. To stop, click the red stop button next to the `Post Ads` button.
 
 
 ## FAQ
@@ -105,11 +146,12 @@ This repository contains a heavily customized version of the mainline F-Chat 3.0
    *   Position preference
    *   Non-custom kinks
    *   Species
-1. Maching for non-binary genders relies on kinks. For example, if your non-binary character has a preference for females, make sure 'females' are listed as a favorite kink.
-1. 'Underage' kink is considered to apply to characters aged 16 or above; 'ageplay' kink is considered to apply to characters aged 16 or below.
-1. 'Older characters' and 'younger characters' kink preferences are interpreted as age difference of 8+ years.
-1. Comparison results will get faster over time, as more and more character data is cached.
-1. If you have a species-fluid character (e.g. you play both your character as both a human and an anthro), you can indicate this by setting your **species** in your character profile in the following ways. F-List Rising will then score you against the best fitting type. 
+1. Matching for non-binary genders relies on kinks. For example, if your non-binary character has a preference for females, make sure 'females' are listed as a favorite kink.
+   *    Similarly if you want to match with non-binary genders -- independent of your characters' gender -- add your preferred non-binary types into your kink list.
+3. 'Underage' kink is considered to apply to characters aged 16 or above; 'ageplay' kink is considered to apply to characters aged 16 or below.
+4. 'Older characters' and 'younger characters' kink preferences are interpreted as age difference of 8+ years.
+5. Comparison results will get faster over time, as more and more character data is cached.
+6. If you have a species-fluid character (e.g. you play both your character as both a human and an anthro), you can indicate this by setting your **species** in your character profile in the following ways. F-List Rising will then score you against the best fitting type. 
     * Human or tiger
     * Human, tiger, or dragon 
     * Anthro (Horse or Tiger)
@@ -138,36 +180,46 @@ All necessary files to build F-Chat 3.0 as an Electron, mobile or web applicatio
  - IntelliJ IDEA is recommended for development.
  
 ## Building for Electron
- - To build native Node assets, you will need to install Python 2.7 and the Visual C++ 2015 Build tools. [More information can be found in the node-gyp docs.](https://github.com/nodejs/node-gyp#installation)
+ - **Windows only:** To build native Node assets, you will need to install Python and the Visual C++ 2015 Build tools. [More information can be found in the node-gyp docs.](https://github.com/nodejs/node-gyp#installation)
+    - `npm install --global --production --vs2015 --add-python-to-path windows-build-tools node-gyp`
  - Change into the `electron` directory.
  - Run `yarn build`/`yarn watch` to build assets. They are placed into the `app` directory.
  - Run `yarn start` to start the app in debug mode. Use `Ctrl+Shift+I` to open the Chromium debugger.
 
+### Building a Release Package (Electron)
+ 1. `cd electron`
+ 1. `yarn build:dist`
+ 1. `node pack.js`
 
-### Building on Windows
-
-```
-npm install --global --production --vs2015 --add-python-to-path windows-build-tools node-gyp
-```
 
 ### Packaging
-See https://electron.atom.io/docs/tutorial/application-distribution/
- - Run `yarn build:dist` to create a minified production build.
- - Run `yarn run pack`. The generated installer is placed into the `dist` directory.
-   - On Windows you can add the path to and password for a code signing certificate as arguments.
-   - On Mac you can add your code signing identity as an argument. `zip` is required to be installed.
-   - On Linux you can add a GPG key for signing and its password as arguments. `mksquashfs` and `zsyncmake` are required to be installed.
+> This section is outdated and left here for reference purposes only.
+
+~~See https://electron.atom.io/docs/tutorial/application-distribution/~~
+~~Run `cd electron && yarn build:dist` to create a minified production build.~~
+~~Run `yarn run pack`. The generated installer is placed into the `dist` directory.~~
+~~On Windows you can add the path to and password for a code signing certificate as arguments.~~
+~~On Mac you can add your code signing identity as an argument. `zip` is required to be installed.~~
+~~On Linux you can add a GPG key for signing and its password as arguments. `mksquashfs` and `zsyncmake` are required to be installed.~~
 
 ## Building for Mobile
- - Change into the `mobile` directory.
- - Run `yarn build`/`yarn watch` to build assets. They are placed into the `www` directory.
- - For Android, change into the `android` directory and run `./gradlew assembleDebug`. The generated APK is placed into `app/build/outputs/apk`.
- - For iOS, change into the `ios` directory and open `F-Chat.xcodeproj` using XCode. From there, simply run the app using the play button.
+> Mobile builds are not supported. This section is outdated and left here for reference purposes only. 
+>
+> Are you a kickass mobile developer? Maybe you can help us fix the build.
+
+~~Change into the `mobile` directory.~~
+~~Run `yarn build`/`yarn watch` to build assets. They are placed into the `www` directory.~~
+~~For Android, change into the `android` directory and run `./gradlew assembleDebug`. The generated APK is placed into `app/build/outputs/apk`.~~
+~~For iOS, change into the `ios` directory and open `F-Chat.xcodeproj` using XCode. From there, simply run the app using the play button.~~
 
 ## Building for Web
- - Change into the `webchat` directory.
- - Run `yarn build`/`yarn watch` to build assets. They are placed into the `dist` directory.
- - The compiled main.js file can be included by an HTML file that is expected to provide a global `const chatSettings: {account: string, theme: string, characters: ReadonlyArray<string>, defaultCharacter: string | null};`. It should also normalize the page to 100% height.
+> Web builds are not supported. This section is outdated and left here for reference purposes only. 
+>
+> Are you a kickass web developer? Maybe you can help us fix the build.
+
+~~Change into the `webchat` directory.~~
+~~Run `yarn build`/`yarn watch` to build assets. They are placed into the `dist` directory.~~
+~~The compiled main.js file can be included by an HTML file that is expected to provide a global `const chatSettings: {account: string, theme: string, characters: ReadonlyArray<string>, defaultCharacter: string | null};`. It should also normalize the page to 100% height.~~
 
 ## Building a custom theme
 See [the wiki](https://wiki.f-list.net/F-Chat_3.0/Themes) for instructions on how to create a custom theme.

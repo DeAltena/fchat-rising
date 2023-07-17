@@ -14,12 +14,13 @@ import { NoteCheckerCount } from '../../site/note-checker';
  * 'imagepreview-show': {url: string}
  * 'imagepreview-toggle-stickyness': {url: string}
  * 'character-data': {character: Character}
- * 'character-score': {character: Character, score: number}
+ * 'character-score': {character: Character, score: number, isFiltered: boolean}
  * 'private-message': {message: Message}
  * 'channel-ad': {message: Message, channel: Conversation, profile: ComplexCharacter | undefined}
  * 'channel-message': {message: Message, channel: Conversation}
  * 'select-conversation': { conversation: Conversation }
- * 'note-counts-update': {}
+ * 'note-counts-update': {},
+ * 'character-memo': { character: string, memo: CharacterMemo }
  */
 
 
@@ -42,7 +43,7 @@ export interface CharacterDataEvent {
 
 
 export interface SelectConversationEvent extends EventBusEvent {
-    conversation: Conversation;
+    conversation: Conversation | null;
 }
 
 export type EventCallback = (data: any) => void | Promise<void>;

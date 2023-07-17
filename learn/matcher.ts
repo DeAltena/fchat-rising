@@ -10,7 +10,8 @@ import anyAscii from 'any-ascii';
 import { Store } from '../site/character_page/data_store';
 
 import {
-    BodyType, bodyTypeKinkMapping,
+    BodyType,
+    bodyTypeKinkMapping,
     fchatGenderMap,
     FurryPreference,
     Gender,
@@ -29,7 +30,10 @@ import {
     nonAnthroSpecies,
     Orientation,
     Position,
-    PostLengthPreference, postLengthPreferenceMapping, postLengthPreferenceScoreMapping, Scoring,
+    PostLengthPreference,
+    postLengthPreferenceMapping,
+    postLengthPreferenceScoreMapping,
+    Scoring,
     Species,
     SpeciesMap,
     speciesMapping,
@@ -520,6 +524,10 @@ export class Matcher {
         return this.formatScoring(score, postLengthPreferenceMapping[theirLength]);
     }
 
+    static getSpeciesName(species: Species): string {
+        return speciesNames[species] || `${Species[species].toLowerCase()}s`;
+    }
+
     private resolveSpeciesScore(): Score {
         const you = this.you;
         const theirAnalysis = this.theirAnalysis;
@@ -613,6 +621,10 @@ export class Matcher {
         const weighted = scores.favorite.weighted + scores.yes.weighted + scores.maybe.weighted + scores.no.weighted;
 
         log.debug('report.score.kink', this.them.name, this.you.name, scores, weighted);
+
+        if (scores.favorite.count + scores.yes.count + scores.maybe.count + scores.no.count < 10) {
+            return new Score(Scoring.NEUTRAL);
+        }
 
         if (weighted === 0) {
             return new Score(Scoring.NEUTRAL);
@@ -710,6 +722,9 @@ export class Matcher {
 
     private resolveGenderScore(): Score {
         const you = this.you;
+
+        const yourGender = this.yourAnalysis.gender;
+        const yourOrientation = this.yourAnalysis.orientation;
         const theirGender = this.theirAnalysis.gender;
 
         if (theirGender === null)
@@ -721,6 +736,21 @@ export class Matcher {
         if (genderKinkScore !== null)
             return Matcher.formatKinkScore(genderKinkScore, genderName);
 
+        if (yourGender && yourOrientation) {
+            if (Matcher.isCisGender(yourGender) && !Matcher.isCisGender(theirGender)) {
+                if ([
+                    Orientation.Straight,
+                    Orientation.Gay,
+                    Orientation.Bisexual,
+                    Orientation.BiCurious,
+                    Orientation.BiFemalePreference,
+                    Orientation.BiMalePreference
+                ].includes(yourOrientation)) {
+                    return new Score(Scoring.MISMATCH, 'No <span>non-binary</span> genders');
+                }
+            }
+        }
+
         return new Score(Scoring.NEUTRAL);
     }
 
@@ -731,7 +761,7 @@ export class Matcher {
             const bodyTypePreference = Matcher.getKinkPreference(this.you, bodyTypeKinkMapping[theirBodyType]);
 
             if (bodyTypePreference !== null) {
-                return Matcher.formatKinkScore(bodyTypePreference, `{BodyType[theirBodyType].toLowerCase()}s`);
+                return Matcher.formatKinkScore(bodyTypePreference, `${BodyType[theirBodyType].toLowerCase()}s`);
             }
         }
 
@@ -910,8 +940,8 @@ export class Matcher {
 
 
     private resolveKinkBucketScore(bucket: 'all' | 'favorite' | 'yes' | 'maybe' | 'no' | 'positive' | 'negative'): KinkBucketScore {
-        const yourKinks = this.getAllStandardKinks(this.you);
-        const theirKinks = this.getAllStandardKinks(this.them);
+        const yourKinks = Matcher.getAllStandardKinks(this.you);
+        const theirKinks = Matcher.getAllStandardKinks(this.them);
 
         // let missed = 0;
 
@@ -984,7 +1014,7 @@ export class Matcher {
     //     );
     // }
 
-    private getAllStandardKinks(c: Character): { [key: number]: KinkChoice } {
+    static getAllStandardKinks(c: Character): { [key: number]: KinkChoice } {
         const kinks = _.pickBy(c.kinks, _.isString);
 
         // Avoid using _.forEach on c.customs because lodash thinks it is an array
@@ -997,6 +1027,24 @@ export class Matcher {
         }
 
         return kinks as any;
+    }
+
+    static findKinkById(c: Character, kinkId: number): KinkChoice | number | undefined {
+        if (kinkId in c.kinks) {
+            return c.kinks[kinkId];
+        }
+
+        for (const custom of Object.values(c.customs)) {
+            if (custom) {
+                const children = (custom as any).children ?? [];
+
+                if (children.includes(kinkId)) {
+                    return custom.choice;
+                }
+            }
+        }
+
+        return undefined;
     }
 
 
@@ -1023,17 +1071,14 @@ export class Matcher {
     }
 
     static getKinkPreference(c: Character, kinkId: number): KinkPreference | null {
-        if (!(kinkId in c.kinks))
-            return null;
-
-        const kinkVal = c.kinks[kinkId];
+        const kinkVal = Matcher.findKinkById(c, kinkId);
 
         if (kinkVal === undefined) {
             return null;
         }
 
         if (typeof kinkVal === 'string') {
-            return kinkMapping[c.kinks[kinkId] as string];
+            return kinkMapping[kinkVal];
         }
 
         const custom = c.customs[kinkVal];

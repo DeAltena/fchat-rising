@@ -66,7 +66,7 @@
                 <div class="progress-bar" :style="{width: importProgress * 100 + '%'}"></div>
             </div>
         </modal>
-        <modal :buttons="false" ref="profileViewer" dialogClass="profile-viewer">
+        <modal :buttons="false" ref="profileViewer" dialogClass="profile-viewer" >
             <character-page :authenticated="true" :oldApi="true" :name="profileName" :image-preview="true" ref="characterPage"></character-page>
             <template slot="title">
                 {{profileName}}
@@ -75,6 +75,8 @@
                 <a class="btn" @click="reloadCharacter"><i class="fa fa-sync" /></a>
 
                 <i class="fas fa-circle-notch fa-spin profileRefreshSpinner" v-show="isRefreshingProfile()"></i>
+
+                <bbcode :text="profileStatus" v-show="!!profileStatus" class="status-text"></bbcode>
 
                 <div class="profile-title-right">
                   <button class="btn" @click="prevProfile" :disabled="!prevProfileAvailable()"><i class="fas fa-arrow-left"></i></button>
@@ -95,13 +97,15 @@
             <word-definition :expression="wordDefinitionLookup" ref="wordDefinitionLookup"></word-definition>
             <template slot="title">
                 {{wordDefinitionLookup}}
-
                 <a class="btn wordDefBtn dictionary" @click="openDefinitionWithDictionary"><i>D</i></a>
                 <a class="btn wordDefBtn thesaurus" @click="openDefinitionWithThesaurus"><i>T</i></a>
                 <a class="btn wordDefBtn urbandictionary" @click="openDefinitionWithUrbanDictionary"><i>UD</i></a>
                 <a class="btn wordDefBtn wikipedia" @click="openDefinitionWithWikipedia"><i>W</i></a>
+
+                <a class="btn" @click="openWordDefinitionInBrowser"><i class="fa fa-external-link-alt"/></a>
             </template>
         </modal>
+
         <logs ref="logsDialog"></logs>
     </div>
 </template>
@@ -131,6 +135,7 @@
     // import { Sqlite3Store } from '../learn/store/sqlite3';
     import CharacterPage from '../site/character_page/character_page.vue';
     import WordDefinition from '../learn/dictionary/WordDefinition.vue';
+    import ProfileAnalysis from '../learn/recommend/ProfileAnalysis.vue';
     import {defaultHost, GeneralSettings, nativeRequire} from './common';
     import { fixLogs /*SettingsStore, Logs as FSLogs*/ } from './filesystem';
     import * as SlimcatImporter from './importer';
@@ -138,11 +143,23 @@
     import { EventBus } from '../chat/preview/event-bus';
 
     import BBCodeTester from '../bbcode/Tester.vue';
+    import { BBCodeView } from '../bbcode/view';
 
     // import ImagePreview from '../chat/preview/ImagePreview.vue';
     // import Bluebird from 'bluebird';
     // import Connection from '../fchat/connection';
     // import Notifications from './notifications';
+
+    // import VueLazyload from 'vue-lazyload';
+    //
+    // Vue.use(VueLazyload, {
+    //   observer: true,
+    //
+    //   observerOptions: {
+    //     rootMargin: '0px',
+    //     threshold: 0,
+    //   }
+    // });
 
     const webContents = remote.getCurrentWebContents();
     const parent = remote.getCurrentWindow().webContents;
@@ -196,7 +213,9 @@
           characterPage: CharacterPage,
           logs: Logs,
           'word-definition': WordDefinition,
-          BBCodeTester: BBCodeTester
+          BBCodeTester: BBCodeTester,
+          bbcode: BBCodeView(core.bbCodeParser),
+          'profile-analysis': ProfileAnalysis
         }
     })
     export default class Index extends Vue {
@@ -213,6 +232,7 @@
         hasCompletedUpgrades!: boolean;
         importProgress = 0;
         profileName = '';
+        profileStatus = '';
         adName = '';
         fixCharacters: ReadonlyArray<string> = [];
         fixCharacter = '';
@@ -303,7 +323,9 @@
 
             electron.ipcRenderer.on('open-profile', (_e: Event, name: string) => {
                 const profileViewer = <Modal>this.$refs['profileViewer'];
-                this.profileName = name;
+
+                this.openProfile(name);
+
                 profileViewer.show();
             });
 
@@ -321,7 +343,7 @@
                   return;
                 }
 
-                this.profileName = name;
+                this.openProfile(name);
                 profileViewer.show();
               }
             });
@@ -335,6 +357,14 @@
             electron.ipcRenderer.on('update-zoom', (_e, zoomLevel) => {
                 webContents.setZoomLevel(zoomLevel);
                 // log.info('INDEXVUE ZOOM UPDATE', zoomLevel);
+            });
+
+            electron.ipcRenderer.on('active-tab', () => {
+                core.cache.setTabActive(true);
+            });
+
+            electron.ipcRenderer.on('inactive-tab', () => {
+                core.cache.setTabActive(false);
             });
 
             window.addEventListener('keydown', (e) => {
@@ -516,7 +546,8 @@
           }
 
           this.profilePointer++;
-          this.profileName = this.profileNameHistory[this.profilePointer];
+
+          this.openProfile(this.profileNameHistory[this.profilePointer]);
         }
 
 
@@ -531,7 +562,8 @@
           }
 
           this.profilePointer--;
-          this.profileName = this.profileNameHistory[this.profilePointer];
+
+          this.openProfile(this.profileNameHistory[this.profilePointer]);
         }
 
 
@@ -539,6 +571,13 @@
           return (this.profilePointer > 0);
         }
 
+        openProfile(name: string) {
+          this.profileName = name;
+
+          const character = core.characters.get(name);
+
+          this.profileStatus = character.statusText || '';
+        }
 
         get styling(): string {
             try {
@@ -574,6 +613,14 @@
 
         async openDefinitionWithWikipedia(): Promise<void> {
           (this.$refs.wordDefinitionLookup as any).setMode('wikipedia');
+        }
+
+
+        async openWordDefinitionInBrowser(): Promise<void> {
+          await remote.shell.openExternal((this.$refs.wordDefinitionLookup as any).getWebUrl());
+
+          // tslint:disable-next-line: no-any no-unsafe-any
+          (this.$refs.wordDefinitionViewer as any).hide();
         }
 
 
@@ -617,9 +664,16 @@
 
         .profile-title-right {
           float: right;
-          bottom: 7px;
+          top: -7px;
           right: 0;
           position: absolute;
+        }
+
+        .status-text {
+          font-size: 12pt;
+          display: block;
+          max-height: 3em;
+          overflow: auto;
         }
       }
     }

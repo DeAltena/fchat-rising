@@ -40,6 +40,8 @@ export class CacheManager {
     // @ts-ignore
     private _isVue = true;
 
+    private readonly startTime = new Date();
+
     static readonly PROFILE_QUERY_DELAY = 400; //1 * 1000;
 
     adCache: AdCache = new AdCache();
@@ -60,6 +62,18 @@ export class CacheManager {
     protected fetchLog: Record<string, number> = {};
     protected ongoingLog: Record<string, true> = {};
 
+    protected isActiveTab = true;
+
+    setTabActive(isActive: boolean): void {
+      this.isActiveTab = isActive;
+
+      if (this.isActiveTab) {
+        void this.onSelectConversation({ conversation: core.conversations.selectedConversation });
+      } else {
+        void this.onSelectConversation({ conversation: null! });
+      }
+    }
+
     markLastPostTime(): void {
         this.lastPost = new Date();
     }
@@ -73,7 +87,7 @@ export class CacheManager {
             return;
         }
 
-        log.debug('profile.cache.queue', { name, skipCacheCheck, channelId });
+        log.debug('profile.cache.queue', { name, skipCacheCheck, channelId, from: core.characters.ownCharacter.name });
 
         if (!skipCacheCheck) {
             const c = await this.profileCache.get(name);
@@ -128,7 +142,8 @@ export class CacheManager {
             'character-score',
             {
                 character: c,
-                score
+                score,
+                isFiltered
             }
         );
 
@@ -143,8 +158,17 @@ export class CacheManager {
       if (char && char.status !== 'offline') {
         const conv = core.conversations.getPrivate(char, true);
 
-        if (conv && conv.messages.length > 0 && Date.now() - _.last(conv.messages)!.time.getTime() < 3 * 60 * 1000) {
-          await testSmartFilterForPrivateMessage(char);
+        if (conv && conv.messages.length > 0 && Date.now() - _.last(conv.messages)!.time.getTime() < 5 * 60 * 1000) {
+          const sessionMessages = _.filter(conv.messages, (m) => m.time.getTime() >= this.startTime.getTime());
+
+          const allMessagesFromThem = _.every(
+            sessionMessages,
+            (m) => ('sender' in m)  && m.sender.name === conv.character.name
+          );
+
+          if (sessionMessages.length > 0 && allMessagesFromThem) {
+            await testSmartFilterForPrivateMessage(char);
+          }
         }
       }
     }
@@ -364,7 +388,11 @@ export class CacheManager {
             }
         );
 
-        if ((!data.profile) && (core.conversations.selectedConversation === data.channel)) {
+        if (
+          (!data.profile) &&
+          (core.conversations.selectedConversation === data.channel) &&
+          (this.isActiveTab)
+        ) {
             await this.queueForFetching(message.sender.name, true, data.channel.channel.id);
         }
 
@@ -379,6 +407,7 @@ export class CacheManager {
 
     async onSelectConversation(data: SelectConversationEvent): Promise<void> {
         const conversation = data.conversation;
+
         const channel = _.get(conversation, 'channel') as (Channel.Channel | undefined);
         const channelId = _.get(channel, 'id', '<missing>');
 
@@ -394,7 +423,7 @@ export class CacheManager {
             // Add fetchers for unknown profiles in ads
             await Bluebird.each(
               _.filter(
-                conversation.messages,
+                conversation!.messages,
                 (m) => {
                   if (m.type !== Message.Type.Ad) {
                     return false;

@@ -33,10 +33,56 @@ export class ImageUrlMutator {
     }
 
     protected init(): void {
-        // this.add(
-        //   /^https?:\/\/.*twitter.com/,
-        //   async(): Promise<string> => 'https://i.imgur.com/ScNLbsp.png'
-        // );
+        this.add(
+            /^http(?:s?):\/\/(?:www\.)?youtu(?:be\.com\/watch\?v=|\.be\/)([\w\-\_]*)(&(amp;)?[\w\?=]*)?/,
+            async(_url: string, match: RegExpMatchArray): Promise<string> => {
+                const videoId = match[1]
+                return `https://yewtu.be/embed/${videoId}?autoplay=1`
+            }
+        );
+        this.add(
+           /^https?:\/\/.*twitter.com\/(.*)/,
+           async(url: string, match: RegExpMatchArray): Promise<string> => {
+                const path = match[1];
+
+                try {
+                    const result = await Axios.get(
+                        `https://api.fxtwitter.com/${path}`
+                    );
+                    const imageUrl = _.get(result, 'data.tweet.media.photos.0.url', null);
+
+                    if (!imageUrl) {
+                        const videoUrl = _.get(result, 'data.tweet.media.videos.0.url', null);
+                        if (!videoUrl) {
+                            return url;
+                        }
+    
+                        if (this.debug)
+                            console.log('Twitter', url, videoUrl);
+    
+                        return videoUrl;
+                    }
+
+                    if (this.debug)
+                        console.log('Twitter', url, imageUrl);
+
+                    return imageUrl;
+
+                } catch (err) {
+                    console.error('Twitter Failure', url, err);
+                    return url;
+                }
+            }
+        );
+
+        this.add(
+          /^https?:\/\/rule34video.com\/videos\/([0-9a-zA-Z-_]+)/,
+          async(_url: string, match: RegExpMatchArray): Promise<string> => {
+            const videoId = match[1];
+
+            return `https://rule34video.com/embed/${videoId}`;
+          }
+        );
 
         this.add(
           /^https?:\/\/(www.)?pornhub.com\/view_video.php\?viewkey=([a-z0-9A-Z]+)/,
@@ -60,7 +106,17 @@ export class ImageUrlMutator {
         );
 
         this.add(
-          /^https?:\/\/(www.)?redgifs.com\/watch\/([a-z0-9A-Z]+)/,
+          /^https?:\/\/(www.|v3.)?gifdeliverynetwork.com\/([a-z0-9A-Z]+)/,
+          async(_url: string, match: RegExpMatchArray): Promise<string> => {
+            const redgifId = match[2];
+
+            // Redgifs is correct
+            return `https://www.redgifs.com/ifr/${redgifId}?controls=0&hd=1`;
+          }
+        );
+
+        this.add(
+          /^https?:\/\/(www.|v3.)?redgifs.com\/watch\/([a-z0-9A-Z]+)/,
           async(_url: string, match: RegExpMatchArray): Promise<string> => {
             const redgifId = match[2];
 
@@ -114,10 +170,10 @@ export class ImageUrlMutator {
 
 
         this.add(
-            /^https?:\/\/((m|www).)?imgur.com\/gallery\/([a-zA-Z0-9]+)/,
+            /^https?:\/\/((m|www).)?imgur.(com|io)\/gallery\/([a-zA-Z0-9]+)/,
             async(url: string, match: RegExpMatchArray): Promise<string> => {
                 // Imgur Gallery
-                const galleryId = match[3];
+                const galleryId = match[4];
 
                 try {
                     const result = await Axios.get(
@@ -150,10 +206,10 @@ export class ImageUrlMutator {
         );
 
         this.add(
-            /^https?:\/\/((m|www).)?imgur.com\/a\/([a-zA-Z0-9]+)/,
+            /^https?:\/\/((m|www).)?imgur.(com|io)\/a\/([a-zA-Z0-9]+)/,
             async(url: string, match: RegExpMatchArray): Promise<string> => {
                 // Imgur Album
-                const albumId = match[3];
+                const albumId = match[4];
 
                 try {
                     const result = await Axios.get(
@@ -187,10 +243,10 @@ export class ImageUrlMutator {
 
         // must be AFTER gallery & album test
         this.add(
-            /^https?:\/\/((m|www).)?imgur.com\/([a-zA-Z0-9]+)/,
+            /^https?:\/\/((m|www).)?imgur.(com|io)\/([a-zA-Z0-9]+)/,
             async(url: string, match: RegExpMatchArray): Promise<string> => {
                 // Single Imgur Image
-                const imageId = match[3];
+                const imageId = match[4];
 
                 try {
                     const result = await Axios.get(

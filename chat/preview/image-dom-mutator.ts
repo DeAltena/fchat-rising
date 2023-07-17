@@ -148,7 +148,6 @@ export class ImageDomMutator {
         this.add('danbooru.donmai.us', this.getBaseJsMutatorScript(['video', '#image']));
         this.add('gfycat.com', this.getBaseJsMutatorScript(['video'], true, [], true));
         this.add('gfycatporn.com', this.getBaseJsMutatorScript(['video'], true, [], true));
-        this.add('youtube.com', this.getBaseJsMutatorScript(['video']), undefined, 'dom-ready');
         this.add('instantfap.com', this.getBaseJsMutatorScript(['#post video', '#post img']));
         this.add('webmshare.com', this.getBaseJsMutatorScript(['video']));
         this.add('vimeo.com', this.getBaseJsMutatorScript(['#video, video', '#image, img']));
@@ -174,6 +173,8 @@ export class ImageDomMutator {
         this.add('xhamster.com', this.getBaseJsMutatorScript(['#photo_slider video', '#photo_slider img', 'video', 'img']));
         this.add('shadbase.com', this.getBaseJsMutatorScript(['#comic video', '#comic img', 'video', 'img']));
         this.add('instagram.com', this.getBaseJsMutatorScript(['article video', 'article img', 'video', 'img']));
+        this.add('rule34video.com', this.getBaseJsMutatorScript(['video'], true, [], false, true));
+        this.add('rule34.us', this.getBaseJsMutatorScript(['.content_push video', '.content_push img']));
 
         this.add(
             'pornhub.com',
@@ -237,7 +238,6 @@ export class ImageDomMutator {
             'dom-ready'
         );
 
-
         this.add(
             'hentai-foundry.com',
             this.getBaseJsMutatorScript(['#picBox video', '#picBox img']),
@@ -255,7 +255,6 @@ export class ImageDomMutator {
                 return urlHelper.format(u);
             }
         );
-
 
         this.add(
             'twitter.com',
@@ -312,7 +311,6 @@ export class ImageDomMutator {
             scheduler();
             `
         );
-
     }
 
 

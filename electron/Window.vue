@@ -35,6 +35,7 @@
 
 <script lang="ts">
     import Sortable from 'sortablejs';
+    import _ from 'lodash';
 
     import {Component, Hook} from '@f-list/vue-ts';
     import * as electron from 'electron';
@@ -136,6 +137,10 @@
             // top bar devtools
             // browserWindow.webContents.openDevTools({ mode: 'detach' });
 
+            if (remote.process.argv.includes('--devtools')) {
+              browserWindow.webContents.openDevTools({ mode: 'detach' });
+            }
+
             updateSupportedLanguages(browserWindow.webContents.session.availableSpellCheckerLanguages);
 
             log.debug('init.window.languages.supported');
@@ -230,9 +235,15 @@
             Sortable.create(<HTMLElement>this.$refs['tabs'], {
                 animation: 50,
                 onEnd: (e) => {
+                    // log.debug('ONEND', e);
                     if(e.oldIndex === e.newIndex) return;
-                    const tab = this.tabs.splice(e.oldIndex!, 1)[0];
-                    this.tabs.splice(e.newIndex!, 0, tab);
+
+                    // log.debug('PRE', this.tabs);
+                    //
+                    // const tab = this.tabs.splice(e.oldIndex!, 1)[0];
+                    // this.tabs.splice(e.newIndex!, 0, tab);
+                    //
+                    // log.debug('POST', this.tabs);
                 },
                 onMove: (e: {related: HTMLElement}) => e.related.id !== 'addTab',
                 filter: '.addTab'
@@ -315,6 +326,10 @@
             // tab devtools
             // view.webContents.openDevTools();
 
+            if (remote.process.argv.includes('--devtools')) {
+              view.webContents.openDevTools({ mode: 'detach' });
+            }
+
             // console.log('ADD TAB LANGUAGES', getSafeLanguages(this.settings.spellcheckLang), this.settings.spellcheckLang);
             view.webContents.session.setSpellCheckerLanguages(getSafeLanguages(this.settings.spellcheckLang));
 
@@ -350,6 +365,11 @@
             browserWindow.setBrowserView(tab.view);
             tab.view.setBounds(getWindowBounds());
             tab.view.webContents.focus();
+
+            // tab.view.webContents.send('active-tab', { webContentsId: tab.view.webContents.id });
+            _.each(this.tabs, (t) => t.view.webContents.send(t === tab ? 'active-tab' : 'inactive-tab'));
+
+            // electron.ipcRenderer.send('active-tab', { webContentsId: tab.view.webContents.id });
         }
 
         remove(tab: Tab, shouldConfirm: boolean = true): void {

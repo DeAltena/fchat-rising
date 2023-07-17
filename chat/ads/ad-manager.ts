@@ -107,7 +107,11 @@ export class AdManager {
             Math.random() * AdManager.POST_VARIANCE;
 
         this.adIndex = this.adIndex + 1;
-        this.nextPostDue = new Date(Date.now() + nextInMs);
+
+        this.nextPostDue = new Date(Math.max(
+          Date.now() + nextInMs,
+          (chanConv.settings.adSettings.lastAdTimestamp || 0) + (core.connection.vars.lfrp_flood * 1000)
+        ));
 
         // tslint:disable-next-line: no-unnecessary-type-assertion
         this.interval = setTimeout(
@@ -159,14 +163,24 @@ export class AdManager {
         return this.firstPost;
     }
 
-    start(): void {
+    start(timeoutMs = AdManager.POSTING_PERIOD): void {
         const chanConv = (<Conversation.ChannelConversation>this.conversation);
-        const initialWait = Math.max(Math.random() * AdManager.START_VARIANCE, (chanConv.nextAd - Date.now()) * 1.1);
+
+        const initialWait = Math.max(
+          Math.random() * AdManager.START_VARIANCE,
+          (chanConv.nextAd - Date.now()) * 1.1,
+          ((this.conversation.settings.adSettings.lastAdTimestamp || 0) + (core.connection.vars.lfrp_flood * 1000)) - Date.now()
+        );
 
         this.adIndex = 0;
         this.active = true;
-        this.nextPostDue = new Date(Date.now() + initialWait);
-        this.expireDue = new Date(Date.now() + AdManager.POSTING_PERIOD);
+
+        this.nextPostDue = new Date(Math.max(
+            Date.now() + initialWait,
+            (this.conversation.settings.adSettings.lastAdTimestamp || 0) + (core.connection.vars.lfrp_flood * 1000)
+        ));
+
+        this.expireDue = new Date(Date.now() + timeoutMs);
         this.adMap = this.generateAdMap();
 
         // tslint:disable-next-line: no-unnecessary-type-assertion
@@ -270,11 +284,11 @@ export class AdManager {
 
         adManager.adIndex = ra.index;
         adManager.firstPost = ra.firstPost;
-        adManager.nextPostDue = ra.nextPostDue || new Date();
+        adManager.nextPostDue = adManager.nextPostDue || ra.nextPostDue || new Date();
         adManager.expireDue = ra.expireDue;
 
         adManager.forceTimeout(
-            Date.now() - adManager.nextPostDue.getTime()
+            Math.max(0, adManager.nextPostDue.getTime() - Date.now())
         );
 
         AdManager.recoverableAds = _.filter(AdManager.recoverableAds, (r) => (r.channel !== ra.channel));

@@ -19,6 +19,22 @@
                 {{l('settings.open')}}</a></div>
             <div><a href="#" @click.prevent="showRecent()" class="btn"><span class="fas fa-history"></span>
                 {{l('chat.recentConversations')}}</a></div>
+
+            <div><a href="#" @click.prevent="showAdCenter()" class="btn"><span class="fas fa-ad"></span>
+                Ad Editor</a></div>
+
+            <div><a href="#" @click.prevent="showAdLauncher()" class="btn"><span class="fas fa-play"></span>
+                Post Ads</a>
+
+                <span v-show="adsAreRunning()" class="adControls">
+                  <span aria-label="Stop All Ads" class="fas fa-stop" @click.prevent="stopAllAds()"></span>
+                </span>
+            </div>
+
+            <div><a href="#" @click.prevent="showProfileAnalyzer()" class="btn"><span class="fas fa-user-md"></span>
+                Profile Helper</a>
+            </div>
+
             <div class="list-group conversation-nav">
                 <a :class="getClasses(conversations.consoleTab)" href="#" @click.prevent="conversations.consoleTab.show()"
                     class="list-group-item list-group-item-action">
@@ -27,8 +43,8 @@
             </div>
 
 
-            {{l('chat.pms')}}
-            <div @click.prevent="showAddPmPartner()" class="pm-add"><a href="#"><span class="fas fa-plus"></span></a></div>
+            <a href="#" @click.prevent="showAddPmPartner()" class="btn"><span class="fas fa-comment"></span>
+                {{l('chat.pms')}}</a>
 
             <div class="list-group conversation-nav" ref="privateConversations">
                 <a v-for="conversation in conversations.privateConversations" href="#" @click.prevent="conversation.show()"
@@ -48,9 +64,13 @@
                         </div>
                     </div>
                 </a>
+
+                <a href="#" @click.prevent="showAddPmPartner()" class="new-conversation" :class="{ glowing: conversations.privateConversations.length === 0 && privateCanGlow }">Open Conversation</a>
             </div>
+
             <a href="#" @click.prevent="showChannels()" class="btn"><span class="fas fa-list"></span>
                 {{l('chat.channels')}}</a>
+
             <div class="list-group conversation-nav" ref="channelConversations">
                 <a v-for="conversation in conversations.channelConversations" href="#" @click.prevent="conversation.show()"
                     :class="getClasses(conversation)" class="list-group-item list-group-item-action item-channel" :key="conversation.key"
@@ -65,6 +85,8 @@
                         <span class="fas fa-times leave" @click.stop="conversation.close()" :aria-label="l('chat.closeTab')"></span>
                     </span>
                 </a>
+
+                <a href="#" @click.prevent="showChannels()" class="join-channel" :class="{ glowing: conversations.channelConversations.length === 0 && channelCanGlow }">Join Channel</a>
             </div>
         </sidebar>
         <div style="display:flex;flex-direction:column;flex:1;min-width:0">
@@ -92,6 +114,8 @@
         <channels ref="channelsDialog"></channels>
         <status-switcher ref="statusDialog"></status-switcher>
         <character-search ref="searchDialog"></character-search>
+        <adLauncher ref="adLauncher"></adLauncher>
+        <adCenter ref="adCenter"></adCenter>
         <settings ref="settingsDialog"></settings>
         <report-dialog ref="reportDialog"></report-dialog>
         <user-menu ref="userMenu" :reportDialog="$refs['reportDialog']"></user-menu>
@@ -99,11 +123,20 @@
         <image-preview ref="imagePreview"></image-preview>
         <add-pm-partner ref="addPmPartnerDialog"></add-pm-partner>
         <note-status v-if="coreState.settings.risingShowUnreadOfflineCount"></note-status>
+
+        <modal :buttons="false" ref="profileAnalysis" dialogClass="profile-analysis" >
+            <profile-analysis></profile-analysis>
+            <template slot="title">
+                {{ownCharacter.name}}
+                <a class="btn" @click="showProfileAnalyzer"><i class="fa fa-sync" /></a>
+            </template>
+        </modal>
+
     </div>
 </template>/me
 
 <script lang="ts">
-    import {Component, Hook} from '@f-list/vue-ts';
+import { Component, Hook, Watch } from '@f-list/vue-ts';
 
     import Sortable from 'sortablejs';
 
@@ -131,6 +164,10 @@
     import NoteStatus from '../site/NoteStatus.vue';
     import { Dialog } from '../helpers/dialog';
     // import { EventBus } from './preview/event-bus';
+    import AdCenterDialog from './ads/AdCenter.vue';
+    import AdLauncherDialog from './ads/AdLauncher.vue';
+    import Modal from '../components/Modal.vue';
+    import ProfileAnalysis from '../learn/recommend/ProfileAnalysis.vue';
 
     const unreadClasses = {
         [Conversation.UnreadState.None]: '',
@@ -145,7 +182,11 @@
             'user-menu': UserMenu, 'recent-conversations': RecentConversations,
             'image-preview': ImagePreview,
             'add-pm-partner': PmPartnerAdder,
-            'note-status': NoteStatus
+            'note-status': NoteStatus,
+            adCenter: AdCenterDialog,
+            adLauncher: AdLauncherDialog,
+            modal: Modal,
+            'profile-analysis': ProfileAnalysis
         }
     })
     export default class ChatView extends Vue {
@@ -158,6 +199,26 @@
         keydownListener!: (e: KeyboardEvent) => void;
         focusListener!: () => void;
         blurListener!: () => void;
+
+        channelConversations = core.conversations.channelConversations
+        privateConversations = core.conversations.privateConversations
+
+        privateCanGlow = !this.channelConversations?.length;
+        channelCanGlow = !this.privateConversations?.length;
+
+        @Watch('conversations.channelConversations')
+        channelConversationsChange() {
+          if (this.conversations.channelConversations?.length) {
+            this.channelCanGlow = false;
+          }
+        }
+
+        @Watch('conversations.privateConversations')
+        privateConversationsChange() {
+          if (this.conversations.privateConversations?.length) {
+            this.privateCanGlow = false;
+          }
+        }
 
         @Hook('mounted')
         mounted(): void {
@@ -216,6 +277,8 @@
             }, (value) => {
                 this.setFontSize(value);
             });
+
+            void core.adCenter.load();
         }
 
         @Hook('destroyed')
@@ -341,6 +404,19 @@
             (<StatusSwitcher>this.$refs['statusDialog']).show();
         }
 
+        showAdCenter(): void {
+          (<AdCenterDialog>this.$refs['adCenter']).show();
+        }
+
+        showAdLauncher(): void {
+          (<AdLauncherDialog>this.$refs['adLauncher']).show();
+        }
+
+        showProfileAnalyzer(): void {
+          (this.$refs.profileAnalysis as any).show();
+          void (this.$refs.profileAnalysis as any).$children[0].analyze();
+        }
+
         showAddPmPartner(): void {
             (<PmPartnerAdder>this.$refs['addPmPartnerDialog']).show();
         }
@@ -371,6 +447,14 @@
 
         getImagePreview(): ImagePreview | undefined {
           return this.$refs['imagePreview'] as ImagePreview;
+        }
+
+        adsAreRunning(): boolean {
+          return core.adCenter.adsAreRunning();
+        }
+
+        stopAllAds(): void {
+          core.adCenter.stopAllAds();
         }
     }
 </script>
@@ -542,6 +626,54 @@
             .expander {
                 display: none;
             }
+        }
+
+        .adControls {
+          float: right;
+          margin-right: 0.25rem;
+          margin-top: 3px;
+
+          span {
+            color: var(--danger);
+            cursor: pointer;
+
+            &:hover {
+              color: var(--red);
+            }
+          }
+        }
+
+        .new-conversation, .join-channel {
+          font-size: 90%;
+          margin-left: 0.2em;
+          margin-top: 0.25em;
+        }
+
+        .glowing {
+          padding: 3px;
+          margin-right: 0.5em;
+          animation: noticeme 2.5s alternate;
+          animation-iteration-count: 10;
+          animation-timing-function: ease-in-out;
+        }
+
+        .join-channel.glowing {
+          animation-delay: 0.3s !important;
+        }
+
+        @keyframes noticeme {
+          0% {
+            // box-shadow: 0 0 10px -10px #aef4af;
+            color: var(--gray-dark)
+          }
+          80% {
+            // box-shadow: 0 0 10px -10px #aef4af;
+            color: var(--gray-dark)
+          }
+          100% {
+            // box-shadow: 0 0 10px 10px #aef4af;
+            color: var(--yellow)
+          }
         }
     }
 </style>

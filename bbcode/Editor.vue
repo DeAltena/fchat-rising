@@ -5,10 +5,25 @@
             style="border-bottom-left-radius:0;border-bottom-right-radius:0" v-if="hasToolbar">
             <i class="fa fa-code"></i>
         </a>
-        <div class="bbcode-toolbar btn-toolbar" role="toolbar" :style="showToolbar ? {display: 'flex'} : undefined" @mousedown.stop.prevent
-            v-if="hasToolbar" style="flex:1 51%">
-            <div class="btn-group" style="flex-wrap:wrap">
-                <div class="btn btn-light btn-sm" v-for="button in buttons" :title="button.title" @click.prevent.stop="apply(button)">
+        <div class="bbcode-toolbar btn-toolbar" role="toolbar" :disabled="disabled" :style="showToolbar ? {display: 'flex'} : undefined" @mousedown.stop.prevent
+            v-if="hasToolbar" style="flex:1 51%; position: relative">
+
+            <div class="popover popover-top color-selector" v-show="colorPopupVisible" v-on-clickaway="dismissColorSelector">
+                <div class="popover-body">
+                  <div class="btn-group" role="group" aria-label="Color">
+                    <button v-for="btnCol in buttonColors" type="button" class="btn text-color" :class="btnCol" :title="btnCol" @click.prevent.stop="colorApply(btnCol)" tabindex="0"></button>
+                  </div>
+                </div>
+            </div>
+
+            <EIconSelector :onSelect="onSelectEIcon" ref="eIconSelector"></EIconSelector>
+
+            <div class="btn-group toolbar-buttons" style="flex-wrap:wrap">
+                <div v-if="!!characterName" class="character-btn">
+                  <icon :character="characterName"></icon>
+                </div>
+
+                <div class="btn btn-light btn-sm" v-for="button in buttons" :class="button.outerClass" :title="button.title" @click.prevent.stop="apply(button)">
                     <i :class="(button.class ? button.class : 'fa ') + button.icon"></i>
                 </div>
                 <div @click="previewBBCode" class="btn btn-light btn-sm" :class="preview ? 'active' : ''"
@@ -37,14 +52,25 @@
 
 <script lang="ts">
     import {Component, Hook, Prop, Watch} from '@f-list/vue-ts';
+    import _ from 'lodash';
     import Vue from 'vue';
+    import { mixin as clickaway } from 'vue-clickaway';
     import {getKey} from '../chat/common';
     import {Keys} from '../keys';
     import {BBCodeElement, CoreBBCodeParser, urlRegex} from './core';
     import {defaultButtons, EditorButton, EditorSelection} from './editor';
     import {BBCodeParser} from './parser';
+    import {default as IconView} from './IconView.vue';
+    import {default as EIconSelector} from './EIconSelector.vue';
+    import Modal from '../components/Modal.vue';
 
-    @Component
+    @Component({
+      components: {
+        'icon': IconView,
+        'EIconSelector': EIconSelector
+      },
+      mixins: [ clickaway ]
+    })
     export default class Editor extends Vue {
         @Prop
         readonly extras?: EditorButton[];
@@ -69,6 +95,15 @@
 
         @Prop({default: false, type: Boolean})
         readonly invalid!: boolean;
+
+        @Prop({default: null})
+        readonly characterName: string | null = null;
+
+        @Prop({default: 'normal'})
+        readonly type: 'normal' | 'big' = 'normal';
+
+        buttonColors = ['red', 'orange', 'yellow', 'green', 'cyan', 'purple', 'blue', 'pink', 'black', 'brown', 'white', 'gray'];
+        colorPopupVisible = false;
 
         preview = false;
         previewWarnings: ReadonlyArray<string> = [];
@@ -144,10 +179,31 @@
 
         get buttons(): EditorButton[] {
             const buttons = this.defaultButtons.slice();
+
             if(this.extras !== undefined)
                 for(let i = 0, l = this.extras.length; i < l; i++)
                     buttons.push(this.extras[i]);
+
+            const colorButtonIndex = _.findIndex(buttons, (b) => b.tag === 'color');
+
+            if (this.colorPopupVisible) {
+              const colorButton = _.clone(buttons[colorButtonIndex]);
+              colorButton.outerClass = 'toggled';
+
+              buttons[colorButtonIndex] = colorButton;
+            }
+
             return buttons;
+        }
+
+        getButtonByTag(tag: string): EditorButton {
+          const btn = _.find(this.buttons, (b) => b.tag === tag);
+
+          if (!btn) {
+            throw new Error('Unknown button');
+          }
+
+          return btn;
         }
 
         @Watch('value')
@@ -186,22 +242,73 @@
             this.element.setSelectionRange(start, end);
         }
 
-        applyText(startText: string, endText: string): void {
+        applyText(startText: string, endText: string, withInject?: string): void {
             const selection = this.getSelection();
             if(selection.length > 0) {
-                const replacement = startText + selection.text + endText;
+                const replacement = startText + (withInject || selection.text) + endText;
                 this.text = this.replaceSelection(replacement);
                 this.setSelection(selection.start, selection.start + replacement.length);
             } else {
                 const start = this.text.substr(0, selection.start) + startText;
                 const end = endText + this.text.substr(selection.start);
-                this.text = start + end;
-                this.$nextTick(() => this.setSelection(start.length));
+                this.text = start + (withInject || '') + end;
+
+                const selectionPoint = withInject ? start.length + withInject.length + endText.length : start.length;
+
+                this.$nextTick(() => this.setSelection(selectionPoint));
             }
             this.$emit('input', this.text);
         }
 
+        dismissColorSelector(): void {
+          this.colorPopupVisible = false;
+        }
+
+        colorApply(btnColor: string): void {
+          const button = this.getButtonByTag('color');
+
+          this.applyButtonEffect(button, btnColor);
+
+          this.colorPopupVisible = false;
+        }
+
+        dismissEIconSelector(): void {
+          (this.$refs['eIconSelector'] as Modal).hide();
+        }
+
+        showEIconSelector(): void {
+          (this.$refs['eIconSelector'] as Modal).show();
+          setTimeout(() => (this.$refs['eIconSelector'] as any).setFocus(), 50);
+        }
+
+        onSelectEIcon(eiconId: string): void {
+          this.eiconApply(eiconId);
+        }
+
+        eiconApply(eiconId: string): void {
+          const button = this.getButtonByTag('eicon');
+
+          this.applyButtonEffect(button, undefined, eiconId);
+
+          this.dismissEIconSelector();
+        }
+
         apply(button: EditorButton): void {
+            if (button.tag === 'color') {
+              this.colorPopupVisible = !this.colorPopupVisible;
+              return;
+            } else if (button.tag === 'eicon') {
+              this.showEIconSelector();
+              this.colorPopupVisible = false;
+              return;
+            } else {
+              this.colorPopupVisible = false;
+            }
+
+            this.applyButtonEffect(button);
+        }
+
+        applyButtonEffect(button: EditorButton, withArgument?: string, withInject?: string): void {
             // Allow emitted variations for custom buttons.
             this.$once('insert', (startText: string, endText: string) => this.applyText(startText, endText));
             // noinspection TypeScriptValidateTypes
@@ -209,8 +316,8 @@
                 // tslint:ignore-next-line:no-any
                 return button.handler.call(this as any, this);
             }
-            if(button.startText === undefined)
-                button.startText = `[${button.tag}]`;
+            if(button.startText === undefined || withArgument)
+                button.startText = `[${button.tag}${withArgument ? '=' + withArgument : ''}]`;
             if(button.endText === undefined)
                 button.endText = `[/${button.tag}]`;
 
@@ -218,7 +325,7 @@
             const sbl = button.startText ? button.startText.length : 0;
 
             if(this.text.length + sbl + ebl > this.maxlength) return;
-            this.applyText(button.startText || '', button.endText || '');
+            this.applyText(button.startText || '', button.endText || '', withInject);
             this.lastInput = Date.now();
         }
 
@@ -254,7 +361,7 @@
                     if(button.key === key) {
                         e.stopPropagation();
                         e.preventDefault();
-                        this.apply(button);
+                        this.applyButtonEffect(button);
                         break;
                     }
             } else if(e.shiftKey) this.isShiftPressed = true;
@@ -311,3 +418,110 @@
         }
     }
 </script>
+<style lang="scss">
+  .bbcode-editor .bbcode-toolbar .character-btn {
+    width: 30px;
+    height: 30px;
+    overflow: hidden;
+
+    a {
+      width: 100%;
+      height: 100%;
+
+      img {
+        width: inherit;
+        height: inherit;
+      }
+    }
+  }
+
+  .bbcode-toolbar {
+    .toolbar-buttons {
+      .btn.toggled {
+        background-color: var(--secondary) !important;
+      }
+    }
+
+    .color-selector {
+      max-width: 145px;
+      top: -57px;
+      left: 94px;
+      line-height: 1;
+      z-index: 1000;
+      background-color: var(--input-bg);
+
+      .btn-group {
+        display: block;
+      }
+
+      .btn {
+        &.text-color {
+          border-radius: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          margin-right: -1px !important;
+          margin-bottom: -1px !important;
+          border: 1px solid var(--secondary);
+          width: 1.3rem;
+          height: 1.3rem;
+
+          &::before {
+            display: none !important;
+          }
+
+          &:hover {
+            border-color: var(--gray-dark) !important;
+          }
+
+          &.red {
+            background-color: var(--textRedColor);
+          }
+
+          &.orange {
+            background-color: var(--textOrangeColor);
+          }
+
+          &.yellow {
+            background-color: var(--textYellowColor);
+          }
+
+          &.green {
+            background-color: var(--textGreenColor);
+          }
+
+          &.cyan {
+            background-color: var(--textCyanColor);
+          }
+
+          &.purple {
+            background-color: var(--textPurpleColor);
+          }
+
+          &.blue {
+            background-color: var(--textBlueColor);
+          }
+
+          &.pink {
+            background-color: var(--textPinkColor);
+          }
+
+          &.black {
+            background-color: var(--textBlackColor);
+          }
+
+          &.brown {
+            background-color: var(--textBrownColor);
+          }
+
+          &.white {
+            background-color: var(--textWhiteColor);
+          }
+
+          &.gray {
+            background-color: var(--textGrayColor);
+          }
+        }
+      }
+    }
+  }
+</style>

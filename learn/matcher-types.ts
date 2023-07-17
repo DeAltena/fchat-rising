@@ -68,7 +68,7 @@ export enum Orientation {
     Straight = 4,
     Gay = 5,
     Bisexual = 6,
-    Asexual = 7,
+    Asexual = 58,
     Unsure = 59,
     BiMalePreference = 89,
     BiFemalePreference = 90,
@@ -342,7 +342,6 @@ export const genderKinkMapping: GenderKinkIdMap = {
     [Gender.Shemale]: Kink.Shemales,
     [Gender.Transgender]: Kink.Transgenders
 };
-
 
 export interface BodyTypeKinkIdMap {
     [key: number]: Kink
@@ -729,28 +728,28 @@ export const kinkMatchWeights = {
 export const kinkMatchScoreMap = {
     favorite: {
         favorite: 1,
-        yes: 0.5,
-        maybe: -0.65,
+        yes: 0.35,
+        maybe: -0.5,
         no: -1.5
     },
 
     yes: {
-        favorite: 0.5,
-        yes: 0.5,
-        maybe: -0.25,
-        no: -0.5
+        favorite: 0.35,
+        yes: 0.35,
+        maybe: -0.125,
+        no: -0.35
     },
 
     maybe: {
-        favorite: -0.5,
-        yes: -0.25,
+        favorite: -0.35,
+        yes: -0.125,
         maybe: 0,
         no: 0
     },
 
     no: {
         favorite: -1.5,
-        yes: -0.65,
+        yes: -0.5,
         maybe: 0,
         no: 0
     }
@@ -798,7 +797,9 @@ export const kinkComparisonSwaps: Record<any, number> = {
     513: 515, // cunnilingus giving -> receiving
     515: 513, // cunnilingus receiving -> giving
     141: 158, // oral sex giving -> receiving
-    158: 141 // oral sex receiving -> giving
+    158: 141, // oral sex receiving -> giving
+    512: 514, // fellatio performing -> fellatio receiving
+    514: 512 // fellatio receiving -> fellatio performing
 };
 
 

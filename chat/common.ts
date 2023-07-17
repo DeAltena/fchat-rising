@@ -54,10 +54,12 @@ export class Settings implements ISettings {
 
     risingShowUnreadOfflineCount = true;
     risingColorblindMode = false;
+    risingShowPortraitNearInput = true;
+    risingShowPortraitInMessage = true;
 
     risingFilter = {
-        hideAds: true,
-        hideSearchResults: true,
+        hideAds: false,
+        hideSearchResults: false,
         hideChannelMembers: false,
         hidePublicChannelMessages: false,
         hidePrivateChannelMessages: false,
@@ -102,6 +104,7 @@ export class Settings implements ISettings {
 export class AdSettings implements Conversation.AdSettings {
     ads: string[] = [];
     randomOrder = false;
+    lastAdTimestamp = 0;
 }
 
 
@@ -111,7 +114,7 @@ export class ConversationSettings implements Conversation.Settings {
     highlightWords: string[] = [];
     joinMessages = Conversation.Setting.Default;
     defaultHighlights = true;
-    adSettings: Conversation.AdSettings = { ads: [], randomOrder: false };
+    adSettings: Conversation.AdSettings = { ads: [], randomOrder: false, lastAdTimestamp: 0 };
 }
 
 function pad(num: number): string | number {
@@ -173,4 +176,14 @@ export class EventMessage implements Conversation.EventMessage {
 
     constructor(readonly text: string, readonly time: Date = new Date()) {
     }
+}
+
+export class BroadcastMessage implements Conversation.BcastMessage {
+    readonly id = ++messageId;
+    readonly type = Conversation.Message.Type.Bcast;
+
+    readonly score = 0;
+    filterMatch = false;
+
+    constructor(readonly text: string, readonly sender: Character, readonly time: Date = new Date()) {}
 }

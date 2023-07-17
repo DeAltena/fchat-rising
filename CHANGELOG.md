@@ -1,5 +1,92 @@
 # Changelog
 
+## 1.23.5
+* Fixed random freezes caused by profile cache
+
+## 1.23.4
+* Hotfix to address slowdown issues
+* Fixed Profile Helper failing to detect stock kinks grouped inside custom kinks 
+
+## 1.23.3
+* Hotfix to fix color picker not disappearing
+
+## 1.23.2
+* Hotfix to fix eicon search hanging the client
+
+## 1.23.1
+* Added favorites to eicon picker
+* Improved eicon picker
+
+## 1.23.0
+* Improved text editor
+  * eicon picker (courtesy of @Xariah Dailstone)
+  * color picker
+* Added [privacy statement](PRIVACY.md)
+
+## 1.22.0
+* Added quick profile view on the right side panel
+* Better YouTube previews (credit: [@twilight-sparkle-irl](https://github.com/twilight-sparkle-irl))
+* Better Twitter previews (credit: [@twilight-sparkle-irl](https://github.com/twilight-sparkle-irl))
+* Security updates to NPM dependencies
+* Fixed issue that prevented `yarn.lock` from being deleted
+* Join channel / open conversation UI glow now stops after ~25 seconds
+
+## 1.21.2
+* Fixed image previews for `imgur.io`, `gifdeliverynetwork.com`, and `rule34.us`
+* Fixed dependencies
+* Profile analyser now warns about a missing portrait image
+* Added option for mini portraits in chat messages
+* Added convenience buttons to joining a channel and creating a private chat
+
+## 1.21.1
+* Fixed a bug that skipped resolving profiles from channel ads
+* Non-binary genders are now considered mismatches against straight, gay, and bi orientations
+    * To override this, you can add kinks such as 'transgenders' to your favorite kinks
+* Smart Filter automatically marks matches as red if 'penalize matches' is selected 
+
+## 1.21.0
+* Added clearer broadcast messages
+* Removed extra arrow from gallery view (credit: [@FatCatClient](https://github.com/FatCatClient))
+* Added profile analyser to help improve profile matching
+* Dictionary lookup view now has a 'open in browser' button
+* Character memos are now displayed more prominently
+* Fixed redgifs.com V3 image previews
+* Fixed rule34video.com image previews
+* 'Select all channels' for Post Ads
+
+## 1.20.0
+* Kink scoring is skipped if characters have only a few shared kinks
+* Kink scoring gives more weight to 'favorite' and 'no' categories
+* Fixed auto-responder not responding to previously unknown characters
+* Fixed re-order tabs
+* Added Ad Editor:
+    * Central ad editor for all ads
+    * Button near 'Console' in the Sidebar
+* Added Post Ads:
+    * Select ads based on your mood, preference, etc. 
+    * Launch ads on multiple channels
+    * Button near 'Console' in the Sidebar
+
+## 1.19.3
+* Added option to have character portrait displayed next to text input
+* Fixed asexual orientation ID
+* Replaced the action star icon to differentiate with the mod badges
+
+## 1.19.2
+* Fixed a bug that could lead to ad-flooding if the client experiences frequent connection drops
+
+## 1.19.1
+* Performance improvement for players who connect multiple characters at the same time
+* Limit max height of the status message banner on character profile 
+
+## 1.19.0
+* Fixed formatting for body type comparison
+* Fixed auto-responder failing to send a message in certain cases
+* Fixed profile kink highlights so that 'receiving' and 'giving' types of the same kink are handled correctly
+* Added character status text to character profile
+* Added 'Recon' tab to character profile
+* Added a button for sorting channel member list by name (default), status, gender
+
 ## 1.18.1
 * Minor smart filtering fixes
 

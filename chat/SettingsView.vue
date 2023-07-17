@@ -199,7 +199,21 @@
                 </label>
             </div>
 
-            <h5>Auto-Format Chat Messages</h5>
+            <div class="form-group">
+                <label class="control-label" for="risingShowPortraitNearInput">
+                    <input type="checkbox" id="risingShowPortraitNearInput" v-model="risingShowPortraitNearInput"/>
+                    Show character portrait by text input
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label" for="risingShowPortraitInMessage">
+                    <input type="checkbox" id="risingShowPortraitInMessage" v-model="risingShowPortraitInMessage"/>
+                    Show character portrait with each message
+                </label>
+            </div>
+			
+			<h5>Auto-Format Chat Messages</h5>
 
           <div class="italic">Hint: when working with replace, the " tags should be at the very top.</div>
           <label><input type="checkbox" id="autoFormatApply" class="control-label" v-model="applyFormats"> Enable Auto-Formatting upon sending messages</label>
@@ -369,6 +383,7 @@
     import _ from 'lodash';
     import { matchesSmartFilters } from '../learn/filter/smart-filter';
     import {AutoFormatter, Format} from './autoformat/autoformat';
+    import { EventBus } from './preview/event-bus';
 
     @Component({
         components: {modal: Modal, tabs: Tabs}
@@ -410,6 +425,9 @@
 
         risingShowUnreadOfflineCount!: boolean;
         risingColorblindMode!: boolean;
+
+        risingShowPortraitNearInput!: boolean;
+        risingShowPortraitInMessage!: boolean;
 
         risingFilter!: SmartFilterSettings = {} as any;
 
@@ -456,6 +474,9 @@
             this.risingShowUnreadOfflineCount = settings.risingShowUnreadOfflineCount;
 
             this.risingColorblindMode = settings.risingColorblindMode;
+            this.risingShowPortraitNearInput = settings.risingShowPortraitNearInput;
+            this.risingShowPortraitInMessage = settings.risingShowPortraitInMessage;
+
             this.risingFilter = settings.risingFilter;
 
             this.formats = settings.autoFormats;
@@ -527,6 +548,8 @@
                 risingComparisonInUserMenu: this.risingComparisonInUserMenu,
                 risingComparisonInSearch: this.risingComparisonInSearch,
                 risingShowUnreadOfflineCount: this.risingShowUnreadOfflineCount,
+                risingShowPortraitNearInput: this.risingShowPortraitNearInput,
+                risingShowPortraitInMessage: this.risingShowPortraitInMessage,
 
                 risingColorblindMode: this.risingColorblindMode,
                 risingFilter: {
@@ -551,6 +574,8 @@
             }
 
             if(this.notifications) await core.notifications.requestPermission();
+
+            EventBus.$emit('configuration-update', core.state.settings);
         }
 
         rebuildFilters() {

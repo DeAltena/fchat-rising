@@ -27,16 +27,19 @@
         <match-tags v-if="match" :match="match"></match-tags>
 
         <div class="filter-matches" v-if="smartFilterIsFiltered">
-          <h4>Smart Filter Matches</h4>
-
-          <span class="tags">
-            <span v-for="filterName in smartFilterDetails" class="smart-filter-tag" :class="filterName">{{ (smartFilterLabels[filterName] || {}).name }}</span>
+          <span class="matched-tags">
+            <span v-for="filterName in smartFilterDetails" class="mismatch smart-filter-tag" :class="filterName"><i class="fas fa-solid fa-filter"></i> {{ (smartFilterLabels[filterName] || {}).name }}</span>
           </span>
         </div>
 
 <!--        <div v-if="customs">-->
 <!--          <span v-for="c in customs" :class="Score.getClasses(c.score)">{{c.name}}</span>-->
 <!--        </div>-->
+
+        <div class="memo" v-if="memo">
+          <h4>Memo</h4>
+          <div>{{ memo }}</div>
+        </div>
 
         <div class="status-message" v-if="statusMessage">
           <h4>Status <span v-if="latestAd && (statusMessage === latestAd.message)">&amp; Latest Ad</span></h4>
@@ -96,8 +99,8 @@ import MessageView from '../message_view';
 
 interface CustomKinkWithScore extends CustomKink {
   score: number;
+  name: string;
 }
-
 
 @Component({
     components: {
@@ -118,6 +121,7 @@ export default class CharacterPreview extends Vue {
   statusClasses?: StatusClasses;
   latestAd?: AdCachedPosting;
   statusMessage?: string;
+  memo?: string;
 
   smartFilterIsFiltered?: boolean;
   smartFilterDetails?: string[];
@@ -201,6 +205,7 @@ export default class CharacterPreview extends Vue {
     this.match = undefined;
     this.character = undefined;
     this.customs = undefined;
+    this.memo = undefined;
     this.ownCharacter = core.characters.ownProfile;
 
     this.conversation = undefined;
@@ -220,6 +225,7 @@ export default class CharacterPreview extends Vue {
       this.updateSmartFilterReport();
       this.updateCustoms();
       this.updateDetails();
+      this.updateMemo();
     }, 0);
   }
 
@@ -295,19 +301,26 @@ export default class CharacterPreview extends Vue {
     this.latestAd = cache.posts[cache.posts.length - 1];
   }
 
+  updateMemo(): void {
+    this.memo = this.character?.memo?.memo;
+  }
 
   updateCustoms(): void {
     this.customs = _.orderBy(
       _.map(
-        _.reject(Object.values(this.character!.character.customs ?? []), (c) => _.isUndefined(c)) as CustomKink[],
-        (c: CustomKink) => _.assign(
-          {},
-          c,
-          {
-            score: kinkMapping[c.choice],
-            name: c.name.trim().replace(/^\W+/, '').replace(/\W+$/, '')
-          }
-        )
+        _.reject(Object.values(this.character!.character.customs ?? {}), (c) => _.isUndefined(c)) as CustomKink[],
+        (c: CustomKink) => {
+          const val: CustomKinkWithScore = _.assign(
+            {},
+            c,
+            {
+              score: kinkMapping[c.choice] as number,
+              name: c.name.trim().replace(/^\W+/, '').replace(/\W+$/, '')
+            }
+          ) as CustomKinkWithScore;
+
+          return val;
+        }
       ),
       ['score', 'name'],
       ['desc', 'asc']
@@ -472,7 +485,7 @@ export default class CharacterPreview extends Vue {
     .status-message,
     .latest-ad-message,
     .conversation,
-    .filter-matches {
+    .memo {
       display: block;
       background-color: rgba(0,0,0,0.2);
       padding: 10px;
@@ -481,20 +494,7 @@ export default class CharacterPreview extends Vue {
     }
 
     .filter-matches {
-      .tags {
-        margin-top: 10px;
-        display: block;
-      }
-
-      .smart-filter-tag {
-          display: inline-block;
-          color: var(--messageTimeFgColor);
-          margin-right: 4px;
-          background-color: var(--messageTimeBgColor);
-          border-radius: 2px;
-          padding-left: 3px;
-          padding-right: 3px;
-      }
+      margin-top: 0.75em;
     }
 
     .character-avatar {

@@ -268,7 +268,7 @@ class PrivateConversation extends Conversation implements Interfaces.PrivateConv
 
         let messageText = this.enteredText;
 
-        messageText = AutoFormatter.getInstance().applyFormats(messageText);
+        messageText = AutoFormatter.getInstance().applyFormats(messageText, this.name);
 
         this.clearText();
 
@@ -420,7 +420,7 @@ class ChannelConversation extends Conversation implements Interfaces.ChannelConv
 
         let message = this.enteredText;
 
-        message = AutoFormatter.getInstance().applyFormats(message);
+        message = AutoFormatter.getInstance().applyFormats(message, this.name);
 
         if (!isAd) {
             this.clearText();

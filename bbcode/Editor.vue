@@ -1,527 +1,661 @@
 <template>
-    <div class="bbcode-editor" style="display:flex;flex-wrap:wrap;justify-content:flex-end">
-        <slot></slot>
-        <a tabindex="0" class="btn btn-light bbcode-btn btn-sm" role="button" @click="showToolbar = true" @blur="showToolbar = false"
-            style="border-bottom-left-radius:0;border-bottom-right-radius:0" v-if="hasToolbar">
-            <i class="fa fa-code"></i>
-        </a>
-        <div class="bbcode-toolbar btn-toolbar" role="toolbar" :disabled="disabled" :style="showToolbar ? {display: 'flex'} : undefined" @mousedown.stop.prevent
-            v-if="hasToolbar" style="flex:1 51%; position: relative">
+  <div class="bbcode-editor" style="display:flex;flex-wrap:wrap;justify-content:flex-end">
+    <slot></slot>
+    <a tabindex="0" class="btn btn-light bbcode-btn btn-sm" role="button" @click="showToolbar = true"
+       @blur="showToolbar = false"
+       style="border-bottom-left-radius:0;border-bottom-right-radius:0" v-if="hasToolbar">
+      <i class="fa fa-code"></i>
+    </a>
+    <div class="bbcode-toolbar btn-toolbar" role="toolbar" :disabled="disabled"
+         :style="showToolbar ? {display: 'flex'} : undefined" @mousedown.stop.prevent
+         v-if="hasToolbar" style="flex:1 51%; position: relative">
 
-            <div class="popover popover-top color-selector" v-show="colorPopupVisible" v-on-clickaway="dismissColorSelector">
-                <div class="popover-body">
-                  <div class="btn-group" role="group" aria-label="Color">
-                    <button v-for="btnCol in buttonColors" type="button" class="btn text-color" :class="btnCol" :title="btnCol" @click.prevent.stop="colorApply(btnCol)" tabindex="0"></button>
-                  </div>
-                </div>
-            </div>
-
-            <EIconSelector :onSelect="onSelectEIcon" ref="eIconSelector"></EIconSelector>
-
-            <div class="btn-group toolbar-buttons" style="flex-wrap:wrap">
-                <div v-if="!!characterName" class="character-btn">
-                  <icon :character="characterName"></icon>
-                </div>
-
-                <div class="btn btn-light btn-sm" v-for="button in buttons" :class="button.outerClass" :title="button.title" @click.prevent.stop="apply(button)">
-                    <i :class="(button.class ? button.class : 'fa ') + button.icon"></i>
-                </div>
-                <div @click="previewBBCode" class="btn btn-light btn-sm" :class="preview ? 'active' : ''"
-                    :title="preview ? 'Close Preview' : 'Preview'">
-                    <i class="fa fa-eye"></i>
-                </div>
-            </div>
-            <button type="button" class="close" aria-label="Close" style="margin-left:10px" @click="showToolbar = false">&times;</button>
+      <div class="popover popover-top color-selector" v-show="colorPopupVisible" v-on-clickaway="dismissColorSelector">
+        <div class="popover-body">
+          <div class="btn-group" role="group" aria-label="Color">
+            <button v-for="btnCol in buttonColors" type="button" class="btn text-color" :class="btnCol" :title="btnCol"
+                    @click.prevent.stop="colorApply(btnCol)" tabindex="0"></button>
+          </div>
         </div>
-        <div class="bbcode-editor-text-area" style="order:100;width:100%;">
-            <textarea ref="input" v-model="text" @input="onInput" v-show="!preview" :maxlength="maxlength" :placeholder="placeholder"
-                :class="finalClasses" @keyup="onKeyUp" :disabled="disabled" @paste="onPaste" @keypress="$emit('keypress', $event)"
-                :style="hasToolbar ? {'border-top-left-radius': 0} : undefined" @keydown="onKeyDown"></textarea>
-            <textarea ref="sizer"></textarea>
-            <div class="bbcode-preview" v-show="preview">
-                <div class="bbcode-preview-warnings">
-                    <div class="alert alert-danger" v-show="previewWarnings.length">
-                        <li v-for="warning in previewWarnings">{{warning}}</li>
-                    </div>
-                </div>
-                <div class="bbcode" ref="preview-element"></div>
-            </div>
+      </div>
+
+      <div class="popover popover-top color-selector dialog-offset" v-show="dialogueColorVisible"
+           v-on-clickaway="dismissDialogueColorSelector">
+        <div class="popover-body">
+          <div class="btn-group" role="group" aria-label="Dialog Color">
+            <button v-for="btnCol in buttonColors" type="button" class="btn text-color" :class="[btnCol, {'selected-col' :
+                    shouldBeSelected(btnCol)}]" :title="btnCol" @click.prevent.stop="dialogApply(btnCol)" tabindex="0"></button>
+            <button type="button" title="none" tabindex="0" class="btn text-color none" :class="{'selected-col' : shouldBeSelected('none')}"
+                    @click.prevent.stop="dialogApply('none')"></button>
+          </div>
         </div>
+      </div>
+
+      <EIconSelector :onSelect="onSelectEIcon" ref="eIconSelector"></EIconSelector>
+
+      <div class="btn-group toolbar-buttons" style="flex-wrap:wrap">
+        <div v-if="!!characterName" class="character-btn">
+          <icon :character="characterName"></icon>
+        </div>
+
+        <div class="btn btn-light btn-sm" v-for="button in buttons" :class="button.outerClass" :title="button.title"
+             @click.prevent.stop="apply(button)">
+          <i :class="(button.class ? button.class : 'fa ') + button.icon"></i>
+        </div>
+        <div @click="previewBBCode" class="btn btn-light btn-sm" :class="preview ? 'active' : ''"
+             :title="preview ? 'Close Preview' : 'Preview'">
+          <i class="fa fa-eye"></i>
+        </div>
+      </div>
+      <button type="button" class="close" aria-label="Close" style="margin-left:10px" @click="showToolbar = false">
+        &times;
+      </button>
     </div>
+    <div class="bbcode-editor-text-area" style="order:100;width:100%;">
+            <textarea ref="input" v-model="text" @input="onInput" v-show="!preview" :maxlength="maxlength"
+                      :placeholder="placeholder"
+                      :class="finalClasses" @keyup="onKeyUp" :disabled="disabled" @paste="onPaste"
+                      @keypress="$emit('keypress', $event)"
+                      :style="hasToolbar ? {'border-top-left-radius': 0} : undefined" @keydown="onKeyDown"></textarea>
+      <textarea ref="sizer"></textarea>
+      <div class="bbcode-preview" v-show="preview">
+        <div class="bbcode-preview-warnings">
+          <div class="alert alert-danger" v-show="previewWarnings.length">
+            <li v-for="warning in previewWarnings">{{ warning }}</li>
+          </div>
+        </div>
+        <div class="bbcode" ref="preview-element"></div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script lang="ts">
-    import {Component, Hook, Prop, Watch} from '@f-list/vue-ts';
-    import _ from 'lodash';
-    import Vue from 'vue';
-    import { mixin as clickaway } from 'vue-clickaway';
-    import {getKey} from '../chat/common';
-    import {Keys} from '../keys';
-    import {BBCodeElement, CoreBBCodeParser, urlRegex} from './core';
-    import {defaultButtons, EditorButton, EditorSelection} from './editor';
-    import {BBCodeParser} from './parser';
-    import {default as IconView} from './IconView.vue';
-    import {default as EIconSelector} from './EIconSelector.vue';
-    import Modal from '../components/Modal.vue';
+import {Component, Hook, Prop, Watch} from '@f-list/vue-ts';
+import _ from 'lodash';
+import Vue from 'vue';
+import {mixin as clickaway} from 'vue-clickaway';
+import {getKey} from '../chat/common';
+import {Keys} from '../keys';
+import {BBCodeElement, CoreBBCodeParser, urlRegex} from './core';
+import {defaultButtons, EditorButton, EditorSelection} from './editor';
+import {BBCodeParser} from './parser';
+import {default as IconView} from './IconView.vue';
+import {default as EIconSelector} from './EIconSelector.vue';
+import Modal from '../components/Modal.vue';
+import {AutoFormatter} from '../chat/autoformat/autoformat';
+import log from 'electron-log';
 
-    @Component({
-      components: {
-        'icon': IconView,
-        'EIconSelector': EIconSelector
-      },
-      mixins: [ clickaway ]
-    })
-    export default class Editor extends Vue {
-        @Prop
-        readonly extras?: EditorButton[];
+@Component({
+  components: {
+    'icon': IconView,
+    'EIconSelector': EIconSelector
+  },
+  mixins: [clickaway]
+})
+export default class Editor extends Vue {
+  @Prop
+  readonly extras?: EditorButton[];
 
-        @Prop({default: 1000})
-        readonly maxlength!: number;
+  @Prop({default: 1000})
+  readonly maxlength!: number;
 
-        @Prop
-        readonly classes?: string;
+  @Prop
+  readonly classes?: string;
 
-        @Prop
-        readonly value?: string | undefined = undefined;
+  @Prop
+  readonly value?: string | undefined = undefined;
 
-        @Prop
-        readonly disabled?: boolean;
+  @Prop
+  readonly disabled?: boolean;
 
-        @Prop
-        readonly placeholder?: string;
+  @Prop
+  readonly placeholder?: string;
 
-        @Prop({default: true})
-        readonly hasToolbar!: boolean;
+  @Prop({default: true})
+  readonly hasToolbar!: boolean;
 
-        @Prop({default: false, type: Boolean})
-        readonly invalid!: boolean;
+  @Prop({default: false, type: Boolean})
+  readonly invalid!: boolean;
 
-        @Prop({default: null})
-        readonly characterName: string | null = null;
+  @Prop({default: null})
+  readonly characterName: string | null = null;
 
-        @Prop({default: 'normal'})
-        readonly type: 'normal' | 'big' = 'normal';
+  @Prop({default: 'normal'})
+  readonly type: 'normal' | 'big' = 'normal';
 
-        buttonColors = ['red', 'orange', 'yellow', 'green', 'cyan', 'purple', 'blue', 'pink', 'black', 'brown', 'white', 'gray'];
-        colorPopupVisible = false;
+  public conversation_name: string = "";
 
-        preview = false;
-        previewWarnings: ReadonlyArray<string> = [];
-        previewResult = '';
-        // tslint:disable-next-line: no-unnecessary-type-assertion
-        text: string = (this.value !== undefined ? this.value : '') as string;
-        element!: HTMLTextAreaElement;
-        sizer!: HTMLTextAreaElement;
-        maxHeight!: number;
-        minHeight!: number;
-        showToolbar = false;
+  buttonColors = ['red', 'orange', 'yellow', 'green', 'cyan', 'purple', 'blue', 'pink', 'black', 'brown', 'white', 'gray'];
+  colorPopupVisible = false;
+  dialogueColorVisible = false;
 
-        protected parser!: BBCodeParser;
-        protected defaultButtons = defaultButtons;
+  preview = false;
+  previewWarnings: ReadonlyArray<string> = [];
+  previewResult = '';
+  // tslint:disable-next-line: no-unnecessary-type-assertion
+  text: string = (this.value !== undefined ? this.value : '') as string;
+  element!: HTMLTextAreaElement;
+  sizer!: HTMLTextAreaElement;
+  maxHeight!: number;
+  minHeight!: number;
+  showToolbar = false;
 
-        private isShiftPressed = false;
-        private undoStack: string[] = [];
-        private undoIndex = 0;
-        private lastInput = 0;
-        //tslint:disable:strict-boolean-expressions
-        private resizeListener!: () => void;
+  protected parser!: BBCodeParser;
+  protected defaultButtons = defaultButtons;
 
-        @Hook('created')
-        created(): void {
-            // console.log('EDITOR', 'created');
-            this.parser = new CoreBBCodeParser();
-            this.resizeListener = () => {
-                const styles = getComputedStyle(this.element);
-                this.maxHeight = parseInt(styles.maxHeight, 10) || 250;
-                this.minHeight = parseInt(styles.minHeight, 10) || 60;
-            };
-        }
+  private isShiftPressed = false;
+  private undoStack: string[] = [];
+  private undoIndex = 0;
+  private lastInput = 0;
+  //tslint:disable:strict-boolean-expressions
+  private resizeListener!: () => void;
 
-        @Hook('mounted')
-        mounted(): void {
-            // console.log('EDITOR', 'mounted');
-            this.element = <HTMLTextAreaElement>this.$refs['input'];
-            const styles = getComputedStyle(this.element);
-            this.maxHeight = parseInt(styles.maxHeight, 10) || 250;
-            this.minHeight = parseInt(styles.minHeight, 10) || 60;
-            setInterval(() => {
-                if(Date.now() - this.lastInput >= 500 && this.text !== this.undoStack[0] && this.undoIndex === 0) {
-                    if(this.undoStack.length >= 30) this.undoStack.pop();
-                    this.undoStack.unshift(this.text);
-                }
-            }, 500);
-            this.sizer = <HTMLTextAreaElement>this.$refs['sizer'];
-            this.sizer.style.cssText = styles.cssText;
-            this.sizer.style.height = '0';
-            this.sizer.style.minHeight = '0';
-            this.sizer.style.overflow = 'hidden';
-            this.sizer.style.position = 'absolute';
-            this.sizer.style.top = '0';
-            this.sizer.style.visibility = 'hidden';
-            this.resize();
-            window.addEventListener('resize', this.resizeListener);
-        }
+  @Hook('created')
+  created(): void {
+    // console.log('EDITOR', 'created');
+    this.parser = new CoreBBCodeParser();
+    this.resizeListener = () => {
+      const styles = getComputedStyle(this.element);
+      this.maxHeight = parseInt(styles.maxHeight, 10) || 250;
+      this.minHeight = parseInt(styles.minHeight, 10) || 60;
+    };
+  }
 
-        //tslint:enable
+  @Hook('mounted')
+  mounted(): void {
+    // console.log('EDITOR', 'mounted');
+    this.element = <HTMLTextAreaElement>this.$refs['input'];
+    const styles = getComputedStyle(this.element);
+    this.maxHeight = parseInt(styles.maxHeight, 10) || 250;
+    this.minHeight = parseInt(styles.minHeight, 10) || 60;
+    setInterval(() => {
+      if (Date.now() - this.lastInput >= 500 && this.text !== this.undoStack[0] && this.undoIndex === 0) {
+        if (this.undoStack.length >= 30) this.undoStack.pop();
+        this.undoStack.unshift(this.text);
+      }
+    }, 500);
+    this.sizer = <HTMLTextAreaElement>this.$refs['sizer'];
+    this.sizer.style.cssText = styles.cssText;
+    this.sizer.style.height = '0';
+    this.sizer.style.minHeight = '0';
+    this.sizer.style.overflow = 'hidden';
+    this.sizer.style.position = 'absolute';
+    this.sizer.style.top = '0';
+    this.sizer.style.visibility = 'hidden';
+    this.resize();
+    window.addEventListener('resize', this.resizeListener);
+  }
 
-        @Hook('destroyed')
-        destroyed(): void {
-            // console.log('EDITOR', 'destroyed');
-            window.removeEventListener('resize', this.resizeListener);
-        }
+  //tslint:enable
 
-        get finalClasses(): string | undefined {
-            let classes = this.classes;
-            if(this.invalid)
-                classes += ' is-invalid';
-            return classes;
-        }
+  @Hook('destroyed')
+  destroyed(): void {
+    // console.log('EDITOR', 'destroyed');
+    window.removeEventListener('resize', this.resizeListener);
+  }
 
-        get buttons(): EditorButton[] {
-            const buttons = this.defaultButtons.slice();
+  get finalClasses(): string | undefined {
+    let classes = this.classes;
+    if (this.invalid)
+      classes += ' is-invalid';
+    return classes;
+  }
 
-            if(this.extras !== undefined)
-                for(let i = 0, l = this.extras.length; i < l; i++)
-                    buttons.push(this.extras[i]);
+  get buttons(): EditorButton[] {
+    const buttons = this.defaultButtons.slice();
 
-            const colorButtonIndex = _.findIndex(buttons, (b) => b.tag === 'color');
+    if (this.extras !== undefined)
+      for (let i = 0, l = this.extras.length; i < l; i++)
+        buttons.push(this.extras[i]);
 
-            if (this.colorPopupVisible) {
-              const colorButton = _.clone(buttons[colorButtonIndex]);
-              colorButton.outerClass = 'toggled';
+    const colorButtonIndex = _.findIndex(buttons, (b) => b.tag === 'color');
 
-              buttons[colorButtonIndex] = colorButton;
-            }
+    if (this.colorPopupVisible) {
+      const colorButton = _.clone(buttons[colorButtonIndex]);
+      colorButton.outerClass = 'toggled';
 
-            return buttons;
-        }
-
-        getButtonByTag(tag: string): EditorButton {
-          const btn = _.find(this.buttons, (b) => b.tag === tag);
-
-          if (!btn) {
-            throw new Error('Unknown button');
-          }
-
-          return btn;
-        }
-
-        @Watch('value')
-        watchValue(newValue: string): void {
-            this.$nextTick(() => this.resize());
-            if(this.text === newValue) return;
-            this.text = newValue;
-            this.lastInput = 0;
-            this.undoIndex = 0;
-            this.undoStack = [];
-        }
-
-        getSelection(): EditorSelection {
-            const length = this.element.selectionEnd - this.element.selectionStart;
-            return {
-                start: this.element.selectionStart,
-                end: this.element.selectionEnd,
-                length,
-                text: this.element.value.substr(this.element.selectionStart, length)
-            };
-        }
-
-        replaceSelection(replacement: string): string {
-            const selection = this.getSelection();
-            const start = this.element.value.substr(0, selection.start) + replacement;
-            const end = this.element.value.substr(selection.end);
-            this.element.value = start + end;
-            this.element.dispatchEvent(new Event('input'));
-            return start + end;
-        }
-
-        setSelection(start: number, end?: number): void {
-            if(end === undefined)
-                end = start;
-            this.element.focus();
-            this.element.setSelectionRange(start, end);
-        }
-
-        applyText(startText: string, endText: string, withInject?: string): void {
-            const selection = this.getSelection();
-            if(selection.length > 0) {
-                const replacement = startText + (withInject || selection.text) + endText;
-                this.text = this.replaceSelection(replacement);
-                this.setSelection(selection.start, selection.start + replacement.length);
-            } else {
-                const start = this.text.substr(0, selection.start) + startText;
-                const end = endText + this.text.substr(selection.start);
-                this.text = start + (withInject || '') + end;
-
-                const selectionPoint = withInject ? start.length + withInject.length + endText.length : start.length;
-
-                this.$nextTick(() => this.setSelection(selectionPoint));
-            }
-            this.$emit('input', this.text);
-        }
-
-        dismissColorSelector(): void {
-          this.colorPopupVisible = false;
-        }
-
-        colorApply(btnColor: string): void {
-          const button = this.getButtonByTag('color');
-
-          this.applyButtonEffect(button, btnColor);
-
-          this.colorPopupVisible = false;
-        }
-
-        dismissEIconSelector(): void {
-          (this.$refs['eIconSelector'] as Modal).hide();
-        }
-
-        showEIconSelector(): void {
-          (this.$refs['eIconSelector'] as Modal).show();
-          setTimeout(() => (this.$refs['eIconSelector'] as any).setFocus(), 50);
-        }
-
-        onSelectEIcon(eiconId: string): void {
-          this.eiconApply(eiconId);
-        }
-
-        eiconApply(eiconId: string): void {
-          const button = this.getButtonByTag('eicon');
-
-          this.applyButtonEffect(button, undefined, eiconId);
-
-          this.dismissEIconSelector();
-        }
-
-        apply(button: EditorButton): void {
-            if (button.tag === 'color') {
-              this.colorPopupVisible = !this.colorPopupVisible;
-              return;
-            } else if (button.tag === 'eicon') {
-              this.showEIconSelector();
-              this.colorPopupVisible = false;
-              return;
-            } else {
-              this.colorPopupVisible = false;
-            }
-
-            this.applyButtonEffect(button);
-        }
-
-        applyButtonEffect(button: EditorButton, withArgument?: string, withInject?: string): void {
-            // Allow emitted variations for custom buttons.
-            this.$once('insert', (startText: string, endText: string) => this.applyText(startText, endText));
-            // noinspection TypeScriptValidateTypes
-            if(button.handler !== undefined) {
-                // tslint:ignore-next-line:no-any
-                return button.handler.call(this as any, this);
-            }
-            if(button.startText === undefined || withArgument)
-                button.startText = `[${button.tag}${withArgument ? '=' + withArgument : ''}]`;
-            if(button.endText === undefined)
-                button.endText = `[/${button.tag}]`;
-
-            const ebl = button.endText ? button.endText.length : 0;
-            const sbl = button.startText ? button.startText.length : 0;
-
-            if(this.text.length + sbl + ebl > this.maxlength) return;
-            this.applyText(button.startText || '', button.endText || '', withInject);
-            this.lastInput = Date.now();
-        }
-
-        onInput(): void {
-            if(this.undoIndex > 0) {
-                this.undoStack = this.undoStack.slice(this.undoIndex);
-                this.undoIndex = 0;
-            }
-            this.$emit('input', this.text);
-            this.lastInput = Date.now();
-        }
-
-        onKeyDown(e: KeyboardEvent): void {
-            const key = getKey(e);
-            if((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
-                if(key === Keys.KeyZ) {
-                    e.preventDefault();
-                    if(this.undoIndex === 0 && this.undoStack[0] !== this.text) this.undoStack.unshift(this.text);
-                    if(this.undoStack.length > this.undoIndex + 1) {
-                        this.text = this.undoStack[++this.undoIndex];
-                        this.$emit('input', this.text);
-                        this.lastInput = Date.now();
-                    }
-                } else if(key === Keys.KeyY) {
-                    e.preventDefault();
-                    if(this.undoIndex > 0) {
-                        this.text = this.undoStack[--this.undoIndex];
-                        this.$emit('input', this.text);
-                        this.lastInput = Date.now();
-                    }
-                }
-                for(const button of this.buttons)
-                    if(button.key === key) {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        this.applyButtonEffect(button);
-                        break;
-                    }
-            } else if(e.shiftKey) this.isShiftPressed = true;
-            this.$emit('keydown', e);
-        }
-
-        onKeyUp(e: KeyboardEvent): void {
-            if(!e.shiftKey) this.isShiftPressed = false;
-            this.$emit('keyup', e);
-        }
-
-        resize(): void {
-            this.sizer.style.fontSize = this.element.style.fontSize;
-            this.sizer.style.lineHeight = this.element.style.lineHeight;
-            this.sizer.style.width = `${this.element.offsetWidth}px`;
-            this.sizer.value = this.element.value;
-            this.element.style.height = `${Math.max(Math.min(this.sizer.scrollHeight, this.maxHeight), this.minHeight)}px`;
-            this.sizer.style.width = '0';
-        }
-
-        onPaste(e: ClipboardEvent): void {
-            const data = e.clipboardData!.getData('text/plain');
-            if(!this.isShiftPressed && urlRegex.test(data)) {
-                e.preventDefault();
-                this.applyText(`[url=${data}]`, '[/url]');
-            }
-        }
-
-        focus(): void {
-            this.element.focus();
-        }
-
-        previewBBCode(): void {
-            this.doPreview();
-        }
-
-        protected doPreview(): void {
-            const targetElement = <HTMLElement>this.$refs['preview-element'];
-            if(this.preview) {
-                this.preview = false;
-                this.previewWarnings = [];
-                this.previewResult = '';
-                const previewElement = (<BBCodeElement>targetElement.firstChild);
-                // noinspection TypeScriptValidateTypes
-                if(previewElement.cleanup !== undefined) previewElement.cleanup();
-                if(targetElement.firstChild !== null) targetElement.removeChild(targetElement.firstChild);
-            } else {
-                this.preview = true;
-                this.parser.storeWarnings = true;
-                targetElement.appendChild(this.parser.parseEverything(this.text));
-                this.previewWarnings = this.parser.warnings;
-                this.parser.storeWarnings = false;
-            }
-        }
+      buttons[colorButtonIndex] = colorButton;
     }
+
+    const diaButtonIndex = _.findIndex(buttons, (b) => b.tag === 'dialog_color');
+    let dialogClasses = "";
+    let overrideColor = AutoFormatter.getInstance().getConversationOverride(this.conversation_name);
+    if(overrideColor !== undefined) {
+      dialogClasses = `${dialogClasses} ${overrideColor}-icon`
+    }
+    if (this.dialogueColorVisible) {
+      dialogClasses = `${dialogClasses} toggled`
+    }
+    if(dialogClasses !== ""){
+      const dialogButton = _.clone(buttons[diaButtonIndex]);
+      dialogButton.outerClass = dialogClasses;
+      buttons[diaButtonIndex] = dialogButton;
+    }
+
+    return buttons;
+  }
+
+  getButtonByTag(tag: string): EditorButton {
+    const btn = _.find(this.buttons, (b) => b.tag === tag);
+
+    if (!btn) {
+      throw new Error('Unknown button');
+    }
+
+    return btn;
+  }
+
+  shouldBeSelected(color: string): boolean {
+    let overrideColor = AutoFormatter.getInstance().getConversationOverride(this.conversation_name);
+    if(overrideColor !== undefined) {
+      return overrideColor === color;
+    } else {
+      return color === 'none';
+    }
+  }
+
+  @Watch('value')
+  watchValue(newValue: string): void {
+    this.$nextTick(() => this.resize());
+    if (this.text === newValue) return;
+    this.text = newValue;
+    this.lastInput = 0;
+    this.undoIndex = 0;
+    this.undoStack = [];
+  }
+
+  getSelection(): EditorSelection {
+    const length = this.element.selectionEnd - this.element.selectionStart;
+    return {
+      start: this.element.selectionStart,
+      end: this.element.selectionEnd,
+      length,
+      text: this.element.value.substr(this.element.selectionStart, length)
+    };
+  }
+
+  replaceSelection(replacement: string): string {
+    const selection = this.getSelection();
+    const start = this.element.value.substr(0, selection.start) + replacement;
+    const end = this.element.value.substr(selection.end);
+    this.element.value = start + end;
+    this.element.dispatchEvent(new Event('input'));
+    return start + end;
+  }
+
+  setSelection(start: number, end?: number): void {
+    if (end === undefined)
+      end = start;
+    this.element.focus();
+    this.element.setSelectionRange(start, end);
+  }
+
+  applyText(startText: string, endText: string, withInject?: string): void {
+    const selection = this.getSelection();
+    if (selection.length > 0) {
+      const replacement = startText + (withInject || selection.text) + endText;
+      this.text = this.replaceSelection(replacement);
+      this.setSelection(selection.start, selection.start + replacement.length);
+    } else {
+      const start = this.text.substr(0, selection.start) + startText;
+      const end = endText + this.text.substr(selection.start);
+      this.text = start + (withInject || '') + end;
+
+      const selectionPoint = withInject ? start.length + withInject.length + endText.length : start.length;
+
+      this.$nextTick(() => this.setSelection(selectionPoint));
+    }
+    this.$emit('input', this.text);
+  }
+
+  dismissColorSelector(): void {
+    this.colorPopupVisible = false;
+  }
+
+  dismissDialogueColorSelector(): void {
+    this.dialogueColorVisible = false;
+  }
+
+  colorApply(btnColor: string): void {
+    const button = this.getButtonByTag('color');
+
+    this.applyButtonEffect(button, btnColor);
+
+    this.colorPopupVisible = false;
+  }
+
+  dialogApply(diaColor: string): void {
+    if(diaColor === 'none') {
+      AutoFormatter.getInstance().removeConversationOverride(this.conversation_name);
+    } else {
+      AutoFormatter.getInstance().addConversationOverride(this.conversation_name, diaColor);
+    }
+    this.dialogueColorVisible = false;
+  }
+
+  dismissEIconSelector(): void {
+    (this.$refs['eIconSelector'] as Modal).hide();
+  }
+
+  showEIconSelector(): void {
+    (this.$refs['eIconSelector'] as Modal).show();
+    setTimeout(() => (this.$refs['eIconSelector'] as any).setFocus(), 50);
+  }
+
+  onSelectEIcon(eiconId: string): void {
+    this.eiconApply(eiconId);
+  }
+
+  eiconApply(eiconId: string): void {
+    const button = this.getButtonByTag('eicon');
+
+    this.applyButtonEffect(button, undefined, eiconId);
+
+    this.dismissEIconSelector();
+  }
+
+  apply(button: EditorButton): void {
+    if (button.tag === 'color' || button.tag === 'dialogue_color') {
+      this.colorPopupVisible = !this.colorPopupVisible;
+      this.dialogueColorVisible = false;
+      return;
+    } else if (button.tag === 'eicon') {
+      this.showEIconSelector();
+      this.colorPopupVisible = false;
+      this.dialogueColorVisible = false;
+      return;
+    } else if (button.tag === 'dialog_color') {
+      this.dialogueColorVisible = !this.dialogueColorVisible;
+      this.colorPopupVisible = false;
+      return;
+    } else {
+      this.colorPopupVisible = false;
+      this.dialogueColorVisible = false;
+    }
+
+    this.applyButtonEffect(button);
+  }
+
+  applyButtonEffect(button: EditorButton, withArgument?: string, withInject?: string): void {
+    // Allow emitted variations for custom buttons.
+    this.$once('insert', (startText: string, endText: string) => this.applyText(startText, endText));
+    // noinspection TypeScriptValidateTypes
+    if (button.handler !== undefined) {
+      // tslint:ignore-next-line:no-any
+      return button.handler.call(this as any, this);
+    }
+    if (button.startText === undefined || withArgument)
+      button.startText = `[${button.tag}${withArgument ? '=' + withArgument : ''}]`;
+    if (button.endText === undefined)
+      button.endText = `[/${button.tag}]`;
+
+    const ebl = button.endText ? button.endText.length : 0;
+    const sbl = button.startText ? button.startText.length : 0;
+
+    if (this.text.length + sbl + ebl > this.maxlength) return;
+    this.applyText(button.startText || '', button.endText || '', withInject);
+    this.lastInput = Date.now();
+  }
+
+  onInput(): void {
+    if (this.undoIndex > 0) {
+      this.undoStack = this.undoStack.slice(this.undoIndex);
+      this.undoIndex = 0;
+    }
+    this.$emit('input', this.text);
+    this.lastInput = Date.now();
+  }
+
+  onKeyDown(e: KeyboardEvent): void {
+    const key = getKey(e);
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
+      if (key === Keys.KeyZ) {
+        e.preventDefault();
+        if (this.undoIndex === 0 && this.undoStack[0] !== this.text) this.undoStack.unshift(this.text);
+        if (this.undoStack.length > this.undoIndex + 1) {
+          this.text = this.undoStack[++this.undoIndex];
+          this.$emit('input', this.text);
+          this.lastInput = Date.now();
+        }
+      } else if (key === Keys.KeyY) {
+        e.preventDefault();
+        if (this.undoIndex > 0) {
+          this.text = this.undoStack[--this.undoIndex];
+          this.$emit('input', this.text);
+          this.lastInput = Date.now();
+        }
+      }
+      for (const button of this.buttons)
+        if (button.key === key) {
+          e.stopPropagation();
+          e.preventDefault();
+          this.applyButtonEffect(button);
+          break;
+        }
+    } else if (e.shiftKey) this.isShiftPressed = true;
+    this.$emit('keydown', e);
+  }
+
+  onKeyUp(e: KeyboardEvent): void {
+    if (!e.shiftKey) this.isShiftPressed = false;
+    this.$emit('keyup', e);
+  }
+
+  resize(): void {
+    this.sizer.style.fontSize = this.element.style.fontSize;
+    this.sizer.style.lineHeight = this.element.style.lineHeight;
+    this.sizer.style.width = `${this.element.offsetWidth}px`;
+    this.sizer.value = this.element.value;
+    this.element.style.height = `${Math.max(Math.min(this.sizer.scrollHeight, this.maxHeight), this.minHeight)}px`;
+    this.sizer.style.width = '0';
+  }
+
+  onPaste(e: ClipboardEvent): void {
+    const data = e.clipboardData!.getData('text/plain');
+    if (!this.isShiftPressed && urlRegex.test(data)) {
+      e.preventDefault();
+      this.applyText(`[url=${data}]`, '[/url]');
+    }
+  }
+
+  focus(): void {
+    this.element.focus();
+  }
+
+  previewBBCode(): void {
+    this.doPreview();
+  }
+
+  protected doPreview(): void {
+    const targetElement = <HTMLElement>this.$refs['preview-element'];
+    if (this.preview) {
+      this.preview = false;
+      this.previewWarnings = [];
+      this.previewResult = '';
+      const previewElement = (<BBCodeElement>targetElement.firstChild);
+      // noinspection TypeScriptValidateTypes
+      if (previewElement.cleanup !== undefined) previewElement.cleanup();
+      if (targetElement.firstChild !== null) targetElement.removeChild(targetElement.firstChild);
+    } else {
+      this.preview = true;
+      this.parser.storeWarnings = true;
+      targetElement.appendChild(this.parser.parseEverything(this.text));
+      this.previewWarnings = this.parser.warnings;
+      this.parser.storeWarnings = false;
+    }
+  }
+}
 </script>
 <style lang="scss">
-  .bbcode-editor .bbcode-toolbar .character-btn {
-    width: 30px;
-    height: 30px;
-    overflow: hidden;
+.bbcode-editor .bbcode-toolbar .character-btn {
+  width: 30px;
+  height: 30px;
+  overflow: hidden;
 
-    a {
-      width: 100%;
-      height: 100%;
+  a {
+    width: 100%;
+    height: 100%;
 
-      img {
-        width: inherit;
-        height: inherit;
-      }
+    img {
+      width: inherit;
+      height: inherit;
+    }
+  }
+}
+
+.bbcode-toolbar {
+  .toolbar-buttons {
+    .btn.toggled {
+      background-color: var(--secondary) !important;
     }
   }
 
-  .bbcode-toolbar {
-    .toolbar-buttons {
-      .btn.toggled {
-        background-color: var(--secondary) !important;
-      }
+  .color-selector {
+    max-width: 145px;
+    top: -57px;
+    left: 94px;
+    line-height: 1;
+    z-index: 1000;
+    background-color: var(--input-bg);
+
+    .btn-group {
+      display: block;
     }
 
-    .color-selector {
-      max-width: 145px;
-      top: -57px;
-      left: 94px;
-      line-height: 1;
-      z-index: 1000;
-      background-color: var(--input-bg);
+    .btn {
+      &.text-color {
+        border-radius: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        margin-right: -1px !important;
+        margin-bottom: -1px !important;
+        border: 1px solid var(--secondary);
+        width: 1.3rem;
+        height: 1.3rem;
 
-      .btn-group {
-        display: block;
-      }
+        &::before {
+          display: none !important;
+        }
 
-      .btn {
-        &.text-color {
-          border-radius: 0 !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          margin-right: -1px !important;
-          margin-bottom: -1px !important;
-          border: 1px solid var(--secondary);
+        &:hover {
+          border-color: var(--gray-dark) !important;
+        }
+
+        &.red {
+          background-color: var(--textRedColor);
+        }
+
+        &.orange {
+          background-color: var(--textOrangeColor);
+        }
+
+        &.yellow {
+          background-color: var(--textYellowColor);
+        }
+
+        &.green {
+          background-color: var(--textGreenColor);
+        }
+
+        &.cyan {
+          background-color: var(--textCyanColor);
+        }
+
+        &.purple {
+          background-color: var(--textPurpleColor);
+        }
+
+        &.blue {
+          background-color: var(--textBlueColor);
+        }
+
+        &.pink {
+          background-color: var(--textPinkColor);
+        }
+
+        &.black {
+          background-color: var(--textBlackColor);
+        }
+
+        &.brown {
+          background-color: var(--textBrownColor);
+        }
+
+        &.white {
+          background-color: var(--textWhiteColor);
+        }
+
+        &.gray {
+          background-color: var(--textGrayColor);
+        }
+
+        &.none {
+          background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' version='1.1' preserveAspectRatio='none' viewBox='0 0 100 100'><path d='M100 0 L0 100 ' stroke='red' stroke-width='10'/><path d='M0 0 L100 100 ' stroke='red' stroke-width='10'/></svg>") no-repeat center center;
+          background-size: 100% 100%, auto;
+          border: solid red 2px;
           width: 1.3rem;
           height: 1.3rem;
+        }
 
-          &::before {
-            display: none !important;
-          }
-
-          &:hover {
-            border-color: var(--gray-dark) !important;
-          }
-
-          &.red {
-            background-color: var(--textRedColor);
-          }
-
-          &.orange {
-            background-color: var(--textOrangeColor);
-          }
-
-          &.yellow {
-            background-color: var(--textYellowColor);
-          }
-
-          &.green {
-            background-color: var(--textGreenColor);
-          }
-
-          &.cyan {
-            background-color: var(--textCyanColor);
-          }
-
-          &.purple {
-            background-color: var(--textPurpleColor);
-          }
-
-          &.blue {
-            background-color: var(--textBlueColor);
-          }
-
-          &.pink {
-            background-color: var(--textPinkColor);
-          }
-
-          &.black {
-            background-color: var(--textBlackColor);
-          }
-
-          &.brown {
-            background-color: var(--textBrownColor);
-          }
-
-          &.white {
-            background-color: var(--textWhiteColor);
-          }
-
-          &.gray {
-            background-color: var(--textGrayColor);
-          }
+        &.selected-col {
+          border-color: var(--gray-dark) !important;
         }
       }
     }
   }
+
+  .dialog-offset {
+    left: 372px !important;
+    max-width: 170px !important;
+  }
+}
+
+.red-icon {
+  color: var(--textRedColor) !important;
+}
+
+.orange-icon {
+  color: var(--textOrangeColor) !important;
+}
+
+.yellow-icon {
+  color: var(--textYellowColor) !important;
+}
+
+.green-icon {
+  color: var(--textGreenColor) !important;
+}
+
+.cyan-icon {
+  color: var(--textCyanColor) !important;
+}
+
+.purple-icon {
+  color: var(--textPurpleColor) !important;
+}
+
+.blue-icon {
+  color: var(--textBlueColor) !important;
+}
+
+.pink-icon {
+  color: var(--textPinkColor) !important;
+}
+
+.black-icon {
+  color: var(--textBlackColor) !important;
+}
+
+.brown-icon {
+  color: var(--textBrownColor) !important;
+}
+
+.white-icon {
+  color: var(--textWhiteColor) !important;
+}
+
+.gray-icon {
+  color: var(--textGrayColor) !important;
+}
 </style>

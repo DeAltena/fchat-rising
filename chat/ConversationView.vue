@@ -383,6 +383,7 @@
             this.updateOwnName();
 
             if(!anyDialogsShown) (<Editor>this.$refs['textBox']).focus();
+            (<Editor>this.$refs['textBox']).conversation_name = this.conversation.name
             this.$nextTick(() => setTimeout(() => this.messageView.scrollTop = this.messageView.scrollHeight));
             this.scrolledDown = true;
             this.refreshAutoPostingTimer();

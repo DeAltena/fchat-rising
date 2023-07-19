@@ -101,5 +101,10 @@ export let defaultButtons: ReadonlyArray<EditorButton> = [
         tag: 'noparse',
         icon: 'fa-ban',
         key: Keys.KeyN
+    },
+    {
+        title: 'Dialogue Colouring\n\nStyles everything in between two " in the given color. Overrides values set in Options. Valid colors are: red, orange, yellow, green, cyan, blue, purple, pink, black, brown, white and gray.',
+        tag: 'dialog_color',
+        icon: 'fa-quote-right'
     }
 ];

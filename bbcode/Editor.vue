@@ -84,6 +84,8 @@ import {default as IconView} from './IconView.vue';
 import {default as EIconSelector} from './EIconSelector.vue';
 import Modal from '../components/Modal.vue';
 import {AutoFormatter} from '../chat/autoformat/autoformat';
+// tslint:disable-next-line:ban-ts-ignore
+// @ts-ignore
 import log from 'electron-log';
 
 @Component({

@@ -384,6 +384,9 @@
     import { matchesSmartFilters } from '../learn/filter/smart-filter';
     import {AutoFormatter, Format} from './autoformat/autoformat';
     import { EventBus } from './preview/event-bus';
+    // tslint:disable-next-line:ban-ts-ignore
+    // @ts-ignore
+    import log from 'electron-log';
 
     @Component({
         components: {modal: Modal, tabs: Tabs}
@@ -559,7 +562,8 @@
                 },
 
                 autoFormats: this.formats,
-                applyAutoFormats: this.applyFormats
+                applyAutoFormats: this.applyFormats,
+                conversationOverrideFormats: core.state.settings.conversationOverrideFormats
             };
 
             AutoFormatter.getInstance().formats = this.formats;
@@ -576,6 +580,8 @@
             if(this.notifications) await core.notifications.requestPermission();
 
             EventBus.$emit('configuration-update', core.state.settings);
+
+            log.log(core.state.settings.conversationOverrideFormats);
         }
 
         rebuildFilters() {

@@ -1,5 +1,7 @@
 import core from '../core';
-//import log from 'electron-log';
+// tslint:disable-next-line:ban-ts-ignore
+// @ts-ignore
+import log from 'electron-log';
 
 export class Format {
   id: string;
@@ -24,11 +26,18 @@ export class AutoFormatter {
 
   formats: Format[] = [];
   apply = false;
-  conversationOverrides = new Map();
+  conversationOverrides = new Map<string, string>();
 
   private constructor() {
     this.formats = core.state.settings.autoFormats;
     this.apply = core.state.settings.applyAutoFormats;
+    const formatString = core.state.settings.conversationOverrideFormats;
+    if(formatString && formatString.trim() !== '') {
+      const overrideJson = JSON.parse(core.state.settings.conversationOverrideFormats);
+      Object.keys(overrideJson).forEach((key) => {
+        this.conversationOverrides.set(key, overrideJson[key]);
+      });
+    }
   }
 
   static getInstance(): AutoFormatter {
@@ -48,15 +57,63 @@ export class AutoFormatter {
     return fs;
   }
 
+  async storeConversationOverrides(): Promise<void> {
+    const overrideObj: { [key: string]: string } = {};
+    this.conversationOverrides.forEach((value, key) => {
+      overrideObj[key] = value;
+    });
+    core.state.settings = {
+      playSound: core.state.settings.playSound,
+      clickOpensMessage: core.state.settings.clickOpensMessage,
+      disallowedTags: core.state.settings.disallowedTags,
+      notifications: core.state.settings.notifications,
+      highlight: core.state.settings.highlight,
+      highlightWords: core.state.settings.highlightWords,
+      showAvatars: core.state.settings.showAvatars,
+      animatedEicons: core.state.settings.animatedEicons,
+      idleTimer: core.state.settings.idleTimer,
+      messageSeparators: core.state.settings.messageSeparators,
+      eventMessages: core.state.settings.eventMessages,
+      joinMessages: core.state.settings.joinMessages,
+      alwaysNotify: core.state.settings.alwaysNotify,
+      logMessages: core.state.settings.logMessages,
+      logAds: core.state.settings.logAds,
+      fontSize: core.state.settings.fontSize,
+      showNeedsReply: core.state.settings.showNeedsReply,
+      enterSend: core.state.settings.enterSend,
+      colorBookmarks: core.state.settings.colorBookmarks,
+      bbCodeBar: core.state.settings.bbCodeBar,
+      risingAdScore: core.state.settings.risingAdScore,
+      risingLinkPreview: core.state.settings.risingLinkPreview,
+      risingAutoCompareKinks: core.state.settings.risingAutoCompareKinks,
+      risingAutoExpandCustomKinks: core.state.settings.risingAutoExpandCustomKinks,
+      risingCharacterPreview: core.state.settings.risingCharacterPreview,
+      risingComparisonInUserMenu: core.state.settings.risingComparisonInUserMenu,
+      risingComparisonInSearch: core.state.settings.risingComparisonInSearch,
+      risingShowUnreadOfflineCount: core.state.settings.risingShowUnreadOfflineCount,
+      risingShowPortraitNearInput: core.state.settings.risingShowPortraitNearInput,
+      risingShowPortraitInMessage: core.state.settings.risingShowPortraitInMessage,
+      risingColorblindMode: core.state.settings.risingColorblindMode,
+      risingFilter: core.state.settings.risingFilter,
+      autoFormats: core.state.settings.autoFormats,
+      applyAutoFormats: core.state.settings.applyAutoFormats,
+      conversationOverrideFormats: JSON.stringify(overrideObj)
+    };
+
+    if(core.state.settings.notifications) await core.notifications.requestPermission();
+  }
+
   addConversationOverride(conv: string, color: string): void {
     this.conversationOverrides.set(conv, color);
+    this.storeConversationOverrides();
   }
 
   removeConversationOverride(conv: string): void {
     this.conversationOverrides.delete(conv);
+    this.storeConversationOverrides();
   }
 
-  getConversationOverride(conv: string): string {
+  getConversationOverride(conv: string): string | undefined {
     return this.conversationOverrides.get(conv);
   }
 

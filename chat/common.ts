@@ -98,6 +98,7 @@ export class Settings implements ISettings {
     };
     autoFormats = [];
     applyAutoFormats = false;
+    conversationOverrideFormats = "";
 }
 
 

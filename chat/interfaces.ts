@@ -243,6 +243,7 @@ export namespace Settings {
 
         readonly autoFormats: Format[];
         readonly applyAutoFormats: boolean;
+        readonly conversationOverrideFormats: string;
     }
 }
 

@@ -3,6 +3,9 @@ import { methods } from '../site/character_page/data_store';
 import {decodeHTML} from './common';
 import {Character as Interfaces, Connection} from './interfaces';
 import { Character as CharacterProfile } from '../site/character_page/interfaces';
+// tslint:disable-next-line:ban-ts-ignore
+// @ts-ignore
+import log from 'electron-log';
 
 class Character implements Interfaces.Character {
     gender: Interfaces.Gender = 'None';
@@ -164,6 +167,7 @@ export default function(this: void, connection: Connection): Interfaces.State {
                 if(character.status !== 'offline') state.bookmarks.splice(state.bookmarks.indexOf(character), 1);
                 break;
             case 'friendadd':
+                log.log(data);
                 if(character.isFriend) return;
                 state.friendList.push(data.name);
                 character.isFriend = true;
